@@ -1,0 +1,24 @@
+{
+  "originHash" : "d142f42c46cb4f34f52785f8bfc935970769d86cdbac858d90216bad38482d63",
+  "pins" : [
+    {
+      "identity" : "modernslider",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/arjun-dureja/ModernSlider",
+      "state" : {
+        "branch" : "main",
+        "revision" : "f6a09a215ce32cce15bd6b2670fb0180c1efaacd"
+      }
+    },
+    {
+      "identity" : "onpasteboardchange",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/kyle-n/OnPasteboardChange",
+      "state" : {
+        "branch" : "main",
+        "revision" : "56da3a9f6be340698f4516b25dda09cff952214a"
+      }
+    }
+  ],
+  "version" : 3
+}
