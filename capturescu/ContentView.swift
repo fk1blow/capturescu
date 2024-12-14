@@ -80,7 +80,9 @@ struct ContentView: View, KeyboardCommandResponder {
     }
 
     private func handleCopyAction() {
-        let markersBoundingBox = CaptureScreenshotBounds(paths: markersManager.markersPaths(), capturedImage: capturedImage)
+        let markersBoundingBox = CaptureScreenshotBounds(
+            paths: markersManager.markersPaths(), capturedImage: capturedImage
+        )
 
         let capture = ImageRenderer(
             content: CaptureScreenshotCanvas(
