@@ -25,3 +25,7 @@ I can copy/paste an image, add freehand drawing, arrows, shapes, text, and also 
 - implement editing mode on the text marker
 - calculate the text marker width on end so that multiple markers don’t appear as having the same width
 - re-implement copy/paste screenshot functionality
+
+## Resources
+
+https://medium.com/@ivan.ishubin/how-i-used-linear-algebra-to-build-an-interactive-diagramming-editor-and-why-matrix-math-is-d5bd552f2e8d
