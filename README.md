@@ -29,3 +29,9 @@ I can copy/paste an image, add freehand drawing, arrows, shapes, text, and also 
 ## Resources
 
 https://medium.com/@ivan.ishubin/how-i-used-linear-algebra-to-build-an-interactive-diagramming-editor-and-why-matrix-math-is-d5bd552f2e8d
+
+https://personal.math.ubc.ca/~cass/graphics/text/old.pdf/last/ch4.pdf
+
+https://scientificgems.wordpress.com/2014/11/28/mathematics-in-action-affine-transformations-and-postscript/
+
+
