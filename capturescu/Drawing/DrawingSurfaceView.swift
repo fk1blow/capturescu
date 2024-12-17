@@ -15,7 +15,7 @@ struct DrawingSurfaceView: View {
     @EnvironmentObject var markersManager: MarkersManager
 
     var body: some View {
-        Canvas { ctx, size in
+        Canvas { ctx, _ in
             if capturedImage != nil {
                 let x = capturedImage!.position.x
                 let y = capturedImage!.position.y

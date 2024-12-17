@@ -21,11 +21,11 @@ class MarkersManager: ObservableObject {
     func addMarker(marker: Marker) {
         markers.append(marker)
     }
-    
+
     func isMarkerHovered() -> Bool {
         return hoveredMarker != nil
     }
-    
+
     // - if theres already a selected marker, remove it and the highlight
     // - if theres an active marker, selected == active marker
     func selectHoveredMarker() {
@@ -38,50 +38,50 @@ class MarkersManager: ObservableObject {
             markers[selectedMarker!.atIndex].showHighlight()
         }
     }
-    
+
     func clearSelectedMarker() {
         if selectedMarker != nil {
             markers[selectedMarker!.atIndex].hideHighlight()
         }
         selectedMarker = nil
     }
-    
+
     func setHoveredMarker(on marker: Marker, atIndex: Int) {
         // NSCursor.openHand.set()
         hoveredMarker = MarkerSelection(atIndex: atIndex, marker: marker)
         markers[hoveredMarker!.atIndex].showHighlight()
     }
-    
+
     func clearHoveredMarker() {
         // NSCursor.arrow.set()
-        
+
         guard hoveredMarker != nil else { return }
-        
+
         // clear the highlight if it's not the selected one
         if hoveredMarker?.marker.id != selectedMarker?.marker.id {
             markers[hoveredMarker!.atIndex].hideHighlight()
         }
         hoveredMarker = nil
     }
-    
+
     func moveSelectedMarker(to location: CGPoint) {
         guard let selectedMarker = selectedMarker, selectedMarker.atIndex < markers.count else {
             return
         }
-        
+
         markers[selectedMarker.atIndex].offsetMarkerBy(dx: location.x, dy: location.y)
     }
- 
+
     func deleteSelectedMarker() {
         guard selectedMarker != nil else { return }
-        
+
         markers[selectedMarker!.atIndex].hideHighlight()
         markers.remove(at: selectedMarker!.atIndex)
-        
+
         selectedMarker = nil
         hoveredMarker = nil
     }
-    
+
     func markersPaths() -> [Path] {
         var paths: [Path] = []
 
@@ -89,13 +89,13 @@ class MarkersManager: ObservableObject {
             let representation = marker.getRepresentation()
 
             switch representation {
-            case .path(let path):
+            case let .path(path):
                 paths.append(path)
             default:
                 break
             }
         }
-        
+
         return paths
     }
 }

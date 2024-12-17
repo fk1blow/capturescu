@@ -31,16 +31,9 @@ struct PointerToolView: View {
                         .onChanged(handleDragGestureStart)
                         .onEnded(handleDragGestureEnd)
 
-                    // TapGesture(count: 1)
-                    //     .sequenced(before: TapGesture(count: 2))
-
-                    // .updating(<#T##state: GestureState<State>##GestureState<State>#>, body: <#T##(SequenceGesture<TapGesture, TapGesture>.Value, inout State, inout Transaction) -> Void#>)
                     // see https://developer.apple.com/documentation/swiftui/composing-swiftui-gestures
                     // https://chatgpt.com/share/67462560-7d68-8011-92ed-56411336f403
                     // see also ExclusiveGesture https://developer.apple.com/documentation/swiftui/exclusivegesture
-                    //         DragGesture(minimumDistance: 0, coordinateSpace: .local)
-                    //             .onChanged(handleDragGestureStart)
-                    //             .onEnded(handleDragGestureEnd)
                 )
                 .onContinuousHover { phase in
                     handleMouseOver(phase: phase)
@@ -124,7 +117,7 @@ struct PointerToolView: View {
 
     // #region Movine/Dragging
 
-    private func handleMoveStart(value: DragGesture.Value) {
+    private func handleMoveStart(value _: DragGesture.Value) {
         isMovingMarker = true
         markersManager.selectHoveredMarker()
     }
@@ -153,7 +146,7 @@ struct PointerToolView: View {
         }
     }
 
-    private func handleMoveEnd(value: DragGesture.Value) {
+    private func handleMoveEnd(value _: DragGesture.Value) {
         isMovingMarker = false
     }
 
@@ -163,7 +156,7 @@ struct PointerToolView: View {
         guard !isDrawingMarker || !isMovingMarker else { return }
 
         switch phase {
-        case .active(let location):
+        case let .active(location):
             for (index, marker) in markersManager.markers.enumerated() {
                 let boundingBox = marker.markerBoundingBox(near: location)
                 if boundingBox != nil {
