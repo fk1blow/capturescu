@@ -28,10 +28,8 @@ I can copy/paste an image, add freehand drawing, arrows, shapes, text, and also 
 
 ## Resources
 
-https://medium.com/@ivan.ishubin/how-i-used-linear-algebra-to-build-an-interactive-diagramming-editor-and-why-matrix-math-is-d5bd552f2e8d
-
-https://personal.math.ubc.ca/~cass/graphics/text/old.pdf/last/ch4.pdf
-
-https://scientificgems.wordpress.com/2014/11/28/mathematics-in-action-affine-transformations-and-postscript/
-
+- [hos i usded linedar algebra to build an interactive diagramming editor](https://medium.com/@ivan.ishubin/how-i-used-linear-algebra-to-build-an-interactive-diagramming-editor-and-why-matrix-math-is-d5bd552f2e8d)
+- [Chapter 4. Coordinates and conditionals in PostScript](https://personal.math.ubc.ca/~cass/graphics/text/old.pdf/last/ch4.pdf)
+- [mathematics in action affine transformations](https://scientificgems.wordpress.com/2014/11/28/mathematics-in-action-affine-transformations-and-postscript/)
+- [homogenous coordinates](https://www.tomdalling.com/blog/modern-opengl/explaining-homogenous-coordinates-and-projective-geometry/)
 
