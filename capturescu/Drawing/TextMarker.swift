@@ -65,4 +65,17 @@ struct TextMarker: Marker {
   mutating func offsetMarkerBy(dx: CGFloat, dy: CGFloat) {
     frameRepresentation = frameRepresentation.offsetBy(dx: dx, dy: dy)
   }
+  
+  mutating func updateText(_ newText: String) {
+    textValueRepresentation = newText
+  }
+  
+  mutating func updateFrame(_ newFrame: CGRect) {
+    frameRepresentation = newFrame
+  }
+  
+  mutating func updateTextAndFrame(_ newText: String, _ newFrame: CGRect) {
+    textValueRepresentation = newText
+    frameRepresentation = newFrame
+  }
 }

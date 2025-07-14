@@ -21,6 +21,11 @@ class MarkersManager: ObservableObject {
     func addMarker(marker: Marker) {
         markers.append(marker)
     }
+    
+    func updateMarker(at index: Int, with newMarker: Marker) {
+        guard index >= 0 && index < markers.count else { return }
+        markers[index] = newMarker
+    }
 
     func isMarkerHovered() -> Bool {
         return hoveredMarker != nil

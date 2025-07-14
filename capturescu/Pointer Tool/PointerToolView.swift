@@ -21,6 +21,11 @@ struct PointerToolView: View {
   @State private var isDrawingMarker = false
   @State private var isMovingMarker = false
   @State private var lastDragPosition: CGPoint? = nil
+  @State private var lastClickTime: Date? = nil
+  @State private var lastClickLocation: CGPoint? = nil
+  
+  private let doubleClickTimeWindow: TimeInterval = 0.5
+  private let doubleClickDistanceThreshold: CGFloat = 5.0
 
   var body: some View {
     ZStack(
@@ -42,7 +47,15 @@ struct PointerToolView: View {
           }
 
         toolsManager.pointerTool.renderAccessoryView(onDone: { marker in
-          markersManager.addMarker(marker: marker)
+          if let textTool = toolsManager.pointerTool as? TextPointerTool,
+             textTool.isEditingExistingMarker(),
+             let index = textTool.getEditingIndex() {
+            // Update existing marker
+            markersManager.updateMarker(at: index, with: marker)
+          } else {
+            // Add new marker
+            markersManager.addMarker(marker: marker)
+          }
         })
       })
   }
@@ -107,12 +120,52 @@ struct PointerToolView: View {
   // #region Clicking
 
   private func handleClick(value: DragGesture.Value) {
-    if markersManager.isMarkerHovered() == false {
-      // clear the previously selected marker
-      markersManager.clearSelectedMarker()
-      // informs the pointer tool of the click on the pointer tool view(canvas)
-      toolsManager.pointerTool.pointerClicked(at: value.location)
+    let currentTime = Date()
+    let clickLocation = value.location
+    
+    // Check for double-click
+    if let lastTime = lastClickTime,
+       let lastLocation = lastClickLocation,
+       currentTime.timeIntervalSince(lastTime) < doubleClickTimeWindow,
+       distance(from: clickLocation, to: lastLocation) < doubleClickDistanceThreshold {
+      
+      // Handle double-click
+      handleDoubleClick(at: clickLocation)
+      
+      // Reset click tracking
+      lastClickTime = nil
+      lastClickLocation = nil
+    } else {
+      // Handle single click
+      if markersManager.isMarkerHovered() == false {
+        // clear the previously selected marker
+        markersManager.clearSelectedMarker()
+        // informs the pointer tool of the click on the pointer tool view(canvas)
+        toolsManager.pointerTool.pointerClicked(at: value.location)
+      }
+      
+      // Track this click for potential double-click
+      lastClickTime = currentTime
+      lastClickLocation = clickLocation
     }
+  }
+  
+  private func handleDoubleClick(at location: CGPoint) {
+    // Check if double-click is on a text marker
+    if let hoveredMarker = markersManager.hoveredMarker {
+      if hoveredMarker.marker is TextMarker {
+        // Enter text editing mode
+        if let textTool = toolsManager.pointerTool as? TextPointerTool {
+          textTool.editExistingMarker(hoveredMarker.marker as! TextMarker, at: location, index: hoveredMarker.atIndex)
+        }
+      }
+    }
+  }
+  
+  private func distance(from point1: CGPoint, to point2: CGPoint) -> CGFloat {
+    let dx = point1.x - point2.x
+    let dy = point1.y - point2.y
+    return sqrt(dx * dx + dy * dy)
   }
 
   // #endregion

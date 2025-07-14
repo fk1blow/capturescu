@@ -11,13 +11,14 @@ import SwiftUI
 struct TextPointerToolAccessoryView: View {
   // TODO: maybe add this through a Protocol
   var position: CGPoint
+  var initialText: String = ""
   // TODO: maybe add this through a Protocol
   var onDone: (_ text: String, _ frame: CGRect) -> Void
+  var onCancel: (() -> Void)?
 
   @State private var text: String = ""
   @State private var textEditorHeight: CGFloat = 20
   @FocusState private var isFocused: Bool
-  @State var eventsMonitor: Any?
 
   private let font: NSFont = .systemFont(ofSize: 14)
   // this should be the initial width of the TextEditor
@@ -39,25 +40,25 @@ struct TextPointerToolAccessoryView: View {
         .overlay(RoundedRectangle(cornerRadius: 5).stroke(Color.gray.opacity(0.5)))
         .offset(x: position.x, y: position.y)
         .focused($isFocused)
+        .onKeyPress(.escape) {
+          escapeKeyPressed()
+          return .handled
+        }
+        .onKeyPress(keys: [.return], phases: [.down]) { keyPress in
+          if keyPress.modifiers.contains(.shift) {
+            // Shift+Enter: Allow new line (don't handle, let TextEditor handle it)
+            return .ignored
+          } else {
+            // Enter: Save changes
+            saveChanges()
+            return .handled
+          }
+        }
     }
     .onAppear {
+      text = initialText  // Initialize text with provided value
       adjustHeight()  // Adjust height on appear to set initial size correctly
       isFocused = true  // Set focus to the TextEditor when the view appears
-
-      // this will fuckin brake/takeover the events monitor used inside the ContentView wtf!!!
-      eventsMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown]) { event in
-        if event.keyCode == 53 {
-          escapeKeyPressed()
-          return nil
-        }
-        return event
-      }
-    }
-    .onDisappear {
-      if let monitor = eventsMonitor {
-        NSEvent.removeMonitor(monitor)
-        eventsMonitor = nil
-      }
     }
   }
 
@@ -85,7 +86,10 @@ struct TextPointerToolAccessoryView: View {
   }
 
   private func escapeKeyPressed() {
+    onCancel?()
+  }
+  
+  private func saveChanges() {
     onDone(text, CGRect(x: position.x, y: position.y, width: editorWidth, height: textEditorHeight))
-    // Add the code for the functionality you want to trigger here
   }
 }
