@@ -18,8 +18,19 @@ struct CaptureScreenshotCanvas: View {
             if self.capturedImage != nil {
                 let x = self.capturedImage!.position.x
                 let y = self.capturedImage!.position.y
-                let width = self.capturedImage!.image.width
-                let height = self.capturedImage!.image.height
+                
+                // Get the screen scale to handle Retina displays properly (same as DrawingSurfaceView)
+                let screenScale = NSScreen.main?.backingScaleFactor ?? 1.0
+                
+                // Convert pixels to points by dividing by screen scale, then apply user scale
+                let width = (CGFloat(self.capturedImage!.image.width) / screenScale) * self.capturedImage!.scale
+                let height = (CGFloat(self.capturedImage!.image.height) / screenScale) * self.capturedImage!.scale
+                
+                print("📸 SCREENSHOT CANVAS DEBUG:")
+                print("   Screen scale: \(screenScale)")
+                print("   Image pixels: \(self.capturedImage!.image.width) x \(self.capturedImage!.image.height)")
+                print("   Image scale: \(self.capturedImage!.scale)")
+                print("   Rendering at: \(width) x \(height)")
 
                 // Calculate the distance between the original canvas x,y and the annotation bounds x,y
                 // The "bounding box" represents a rectangle, smaller or having the same size as
@@ -31,13 +42,12 @@ struct CaptureScreenshotCanvas: View {
                 ctx.draw(
                     Image(
                         self.capturedImage!.image,
-                        scale: 1.0,
+                        scale: screenScale, // Use screen scale to convert pixels to points
                         label: Text("")
                     ),
                     in: CGRect(
                         origin: CGPoint(x: dx, y: dy),
-                        size: CGSize(width: width,
-                                     height: height)
+                        size: CGSize(width: width, height: height)
                     )
                 )
             }
