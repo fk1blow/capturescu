@@ -13,6 +13,11 @@ struct capturescuApp: App {
     private let markersManager = MarkersManager()
     private let keyboardManager = KeyboardManager.shared
     private let historyManager = HistoryManager.shared
+    
+    init() {
+        // Initialize the interaction state manager after markers manager is created
+        markersManager.initializeInteractionStateManager()
+    }
 
     var body: some Scene {
         WindowGroup {

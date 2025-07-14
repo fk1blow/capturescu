@@ -8,6 +8,70 @@
 import Foundation
 import SwiftUI
 
+class HitDetectionManager {
+    static let shared = HitDetectionManager()
+    
+    private let defaultThreshold: CGFloat = 20.0
+    private let defaultMargin: CGFloat = 10.0
+    
+    private init() {}
+    
+    // MARK: - Public Hit Detection Methods
+    
+    func isPointNearPath(_ testPoint: CGPoint, path: Path, threshold: CGFloat? = nil) -> BoundingBox? {
+        let actualThreshold = threshold ?? defaultThreshold
+        let points = path.points()
+        
+        // Calculate bounding box
+        let boundingBox = getBoundingBox(points: points, margin: actualThreshold)
+        
+        // Quick bounding box check
+        guard isPointInBoundingBox(point: testPoint, boundingBox: boundingBox) else { return nil }
+        
+        // Check distance to each line segment
+        for i in 0..<points.count - 1 {
+            let distance = pointToSegmentDistance(testPoint: testPoint, p1: points[i], p2: points[i + 1])
+            if distance <= actualThreshold {
+                return boundingBox
+            }
+        }
+        
+        return nil
+    }
+    
+    func isPointNearRect(_ testPoint: CGPoint, rect: CGRect) -> BoundingBox? {
+        let boundingBox = BoundingBox(
+            xMin: rect.minX,
+            xMax: rect.maxX,
+            yMin: rect.minY,
+            yMax: rect.maxY
+        )
+        
+        return isPointInBoundingBox(point: testPoint, boundingBox: boundingBox) ? boundingBox : nil
+    }
+    
+    func isPointNearPoints(_ testPoint: CGPoint, points: [CGPoint], threshold: CGFloat? = nil) -> BoundingBox? {
+        let actualThreshold = threshold ?? defaultThreshold
+        
+        // Calculate bounding box
+        let boundingBox = getBoundingBox(points: points, margin: actualThreshold)
+        
+        // Quick bounding box check
+        guard isPointInBoundingBox(point: testPoint, boundingBox: boundingBox) else { return nil }
+        
+        // Check distance to each line segment
+        for i in 0..<points.count - 1 {
+            let distance = pointToSegmentDistance(testPoint: testPoint, p1: points[i], p2: points[i + 1])
+            if distance <= actualThreshold {
+                return boundingBox
+            }
+        }
+        
+        return nil
+    }
+}
+
+// MARK: - Legacy functions for backward compatibility
 // Function to check if a point is near the path
 func isPointNearPath(testPoint: CGPoint, points: [CGPoint], threshold: CGFloat = 10) -> BoundingBox? {
     // Step 1: Calculate the bounding box
@@ -30,6 +94,14 @@ func isPointNearPath(testPoint: CGPoint, points: [CGPoint], threshold: CGFloat =
     }
 
     return nil
+}
+
+func isPointNearRect(testPoint: CGPoint, frame: CGRect) -> BoundingBox? {
+    return HitDetectionManager.shared.isPointNearRect(testPoint, rect: frame)
+}
+
+func isPointNearPathAlt(testPoint: CGPoint, path: Path, threshold: CGFloat = 20) -> BoundingBox? {
+    return HitDetectionManager.shared.isPointNearPath(testPoint, path: path, threshold: threshold)
 }
 
 // Function to calculate the bounding box for a set of points

@@ -35,9 +35,7 @@ struct TextMarker: Marker {
     resolvedText.shading = .color(style.strokeColor.color)
     ctx.draw(resolvedText, in: frameRepresentation)
 
-    if isHighlighted {
-      drawHighlight(onto: ctx)
-    }
+    drawHighlight(onto: ctx)
   }
 
   func changeStyle(with _: MarkerStyle) {
@@ -51,16 +49,9 @@ struct TextMarker: Marker {
   }
 
   func markerBoundingBox(near location: CGPoint) -> BoundingBox? {
-    return isPointNearRect(testPoint: location, frame: frameRepresentation)
+    return HitDetectionManager.shared.isPointNearRect(location, rect: frameRepresentation)
   }
 
-  func drawHighlight(onto ctx: GraphicsContext) {
-    let cornerRadius: CGFloat = 8
-    let expandedRect = frameRepresentation.insetBy(dx: -10, dy: -10)
-    let newPath = RoundedRectangle(cornerRadius: cornerRadius)
-      .path(in: expandedRect)
-    ctx.stroke(newPath, with: .color(style.strokeColor.color), lineWidth: 2)
-  }
 
   mutating func offsetMarkerBy(dx: CGFloat, dy: CGFloat) {
     frameRepresentation = frameRepresentation.offsetBy(dx: dx, dy: dy)

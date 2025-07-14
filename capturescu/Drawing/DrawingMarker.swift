@@ -33,9 +33,7 @@ struct DrawingMarker: Marker {
             graphicsContext.fill(path, with: .color(style.fillColor!.color))
         }
 
-        if isHighlighted {
-            drawHighlight(onto: graphicsContext)
-        }
+        drawHighlight(onto: graphicsContext)
     }
 
     func changeStyle(with _: MarkerStyle) {
@@ -47,7 +45,7 @@ struct DrawingMarker: Marker {
     }
 
     func markerBoundingBox(near location: CGPoint) -> BoundingBox? {
-        return isPointNearPathAlt(testPoint: location, path: path, threshold: 20)
+        return HitDetectionManager.shared.isPointNearPath(location, path: path)
     }
 
     mutating func offsetMarkerBy(dx: CGFloat, dy: CGFloat) {

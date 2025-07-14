@@ -8,9 +8,10 @@
 import Foundation
 import SwiftUI
 
-struct MarkerSelection {
-    var atIndex: Int
-    var marker: Marker
+enum MarkerSelectionState {
+    case none
+    case hovered(index: Int)
+    case selected(index: Int)
 }
 
 protocol MarkerCommand {
@@ -98,13 +99,70 @@ class HistoryManager: ObservableObject {
 
 class MarkersManager: ObservableObject {
     @Published var markers: [Marker] = []
-    @Published var hoveredMarker: MarkerSelection?
-    @Published var selectedMarker: MarkerSelection?
+    @Published var selectionState: MarkerSelectionState = .none
     
-    // Drag state tracking for consolidated move commands
+    // New interaction state manager
+    private var interactionStateManager: InteractionStateManager?
+    
+    // Simplified drag state tracking
     private var isDragging = false
-    private var dragStartPosition: CGPoint?
+    private var dragStartPosition: CGPoint = .zero
     private var draggedMarkerID: UUID?
+    
+    // Initialize interaction state manager
+    func initializeInteractionStateManager() {
+        interactionStateManager = InteractionStateManager(markersManager: self)
+    }
+    
+    // Computed properties for easy access to current markers
+    var hoveredMarkerIndex: Int? {
+        return interactionStateManager?.hoveredMarkerIndex ?? {
+            switch selectionState {
+            case .hovered(let index):
+                return index
+            default:
+                return nil
+            }
+        }()
+    }
+    
+    var selectedMarkerIndex: Int? {
+        return interactionStateManager?.selectedMarkerIndex ?? {
+            switch selectionState {
+            case .selected(let index):
+                return index
+            default:
+                return nil
+            }
+        }()
+    }
+    
+    var hoveredMarker: Marker? {
+        guard let index = hoveredMarkerIndex, index < markers.count else { return nil }
+        return markers[index]
+    }
+    
+    var selectedMarker: Marker? {
+        guard let index = selectedMarkerIndex, index < markers.count else { return nil }
+        return markers[index]
+    }
+    
+    // Interaction state manager interface
+    func handleInteractionEvent(_ event: InteractionEvent) {
+        interactionStateManager?.handleEvent(event)
+    }
+    
+    var isHovering: Bool {
+        return interactionStateManager?.isHovering ?? false
+    }
+    
+    var isDrawing: Bool {
+        return interactionStateManager?.isDrawing ?? false
+    }
+    
+    var isDraggingMarker: Bool {
+        return interactionStateManager?.isDragging ?? false
+    }
 
     func addMarker(marker: Marker) {
         let command = AddMarkerCommand(markersManager: self, marker: marker)
@@ -119,70 +177,62 @@ class MarkersManager: ObservableObject {
     }
 
     func isMarkerHovered() -> Bool {
-        return hoveredMarker != nil
+        return isHovering
     }
 
-    // - if theres already a selected marker, remove it and the highlight
-    // - if theres an active marker, selected == active marker
+    // Legacy methods for backward compatibility - these now delegate to InteractionStateManager
     func selectHoveredMarker() {
-        if selectedMarker != nil {
-            markers[selectedMarker!.atIndex].hideHighlight()
-            selectedMarker = nil
-        }
-        if hoveredMarker != nil {
-            selectedMarker = hoveredMarker!
-            markers[selectedMarker!.atIndex].showHighlight()
-        }
+        // This is now handled by InteractionStateManager automatically
+        // when a marker is clicked while hovered
     }
 
     func clearSelectedMarker() {
-        if selectedMarker != nil {
-            markers[selectedMarker!.atIndex].hideHighlight()
-        }
-        selectedMarker = nil
+        handleInteractionEvent(.clearSelection)
     }
 
     func setHoveredMarker(on marker: Marker, atIndex: Int) {
-        // NSCursor.openHand.set()
-        hoveredMarker = MarkerSelection(atIndex: atIndex, marker: marker)
-        markers[hoveredMarker!.atIndex].showHighlight()
+        // This is now handled by InteractionStateManager automatically
+        // when mouse position changes
     }
 
     func clearHoveredMarker() {
-        // NSCursor.arrow.set()
-
-        guard hoveredMarker != nil else { return }
-
-        // clear the highlight if it's not the selected one
-        if hoveredMarker?.marker.id != selectedMarker?.marker.id {
-            markers[hoveredMarker!.atIndex].hideHighlight()
-        }
-        hoveredMarker = nil
+        handleInteractionEvent(.clearSelection)
     }
 
+    // Simplified single method for marker movement
+    func moveMarker(markerID: UUID, by delta: CGPoint) {
+        guard let markerIndex = markers.firstIndex(where: { $0.id == markerID }) else {
+            return
+        }
+        
+        // Create and execute the move command
+        let command = MoveMarkerCommand(markersManager: self, markerID: markerID, deltaX: delta.x, deltaY: delta.y)
+        HistoryManager.shared.execute(command)
+    }
+    
     // Start a drag operation - called once when drag begins
     func startDragOperation() {
-        guard let selectedMarker = selectedMarker, selectedMarker.atIndex < markers.count else {
+        guard let selectedIndex = selectedMarkerIndex, selectedIndex < markers.count else {
             return
         }
         
         isDragging = true
-        draggedMarkerID = selectedMarker.marker.id
-        dragStartPosition = CGPoint.zero // We'll track cumulative delta
+        draggedMarkerID = markers[selectedIndex].id
+        dragStartPosition = .zero // Reset cumulative delta
     }
     
     // Move marker during drag without creating commands - called repeatedly during drag
     func moveSelectedMarkerDirect(deltaX: CGFloat, deltaY: CGFloat) {
-        guard let selectedMarker = selectedMarker, selectedMarker.atIndex < markers.count else {
+        guard let selectedIndex = selectedMarkerIndex, selectedIndex < markers.count else {
             return
         }
         
         // Direct movement without command creation
-        markers[selectedMarker.atIndex].offsetMarkerBy(dx: deltaX, dy: deltaY)
+        markers[selectedIndex].offsetMarkerBy(dx: deltaX, dy: deltaY)
         
-        // Track cumulative movement if we're in a drag operation
-        if isDragging, let startPos = dragStartPosition {
-            dragStartPosition = CGPoint(x: startPos.x + deltaX, y: startPos.y + deltaY)
+        // Track cumulative movement for consolidated command
+        if isDragging {
+            dragStartPosition = CGPoint(x: dragStartPosition.x + deltaX, y: dragStartPosition.y + deltaY)
         }
     }
     
@@ -190,23 +240,22 @@ class MarkersManager: ObservableObject {
     func endDragOperation() {
         guard isDragging,
               let markerID = draggedMarkerID,
-              let totalDelta = dragStartPosition,
-              totalDelta.x != 0 || totalDelta.y != 0 else {
+              dragStartPosition.x != 0 || dragStartPosition.y != 0 else {
             // Reset state even if no actual movement occurred
             isDragging = false
-            dragStartPosition = nil
+            dragStartPosition = .zero
             draggedMarkerID = nil
             return
         }
         
         // Create a single command for the entire drag operation
         // Use addToHistory() instead of execute() since the movement was already performed during drag
-        let command = MoveMarkerCommand(markersManager: self, markerID: markerID, deltaX: totalDelta.x, deltaY: totalDelta.y)
+        let command = MoveMarkerCommand(markersManager: self, markerID: markerID, deltaX: dragStartPosition.x, deltaY: dragStartPosition.y)
         HistoryManager.shared.addToHistory(command)
         
         // Reset drag state
         isDragging = false
-        dragStartPosition = nil
+        dragStartPosition = .zero
         draggedMarkerID = nil
     }
     
@@ -216,18 +265,16 @@ class MarkersManager: ObservableObject {
     }
 
     func deleteSelectedMarker() {
-        guard selectedMarker != nil else { return }
+        guard let selectedIndex = selectedMarkerIndex else { return }
 
-        let markerToDelete = markers[selectedMarker!.atIndex]
-        let indexToDelete = selectedMarker!.atIndex
+        let markerToDelete = markers[selectedIndex]
         
-        markers[selectedMarker!.atIndex].hideHighlight()
+        markers[selectedIndex].hideHighlight()
         
-        let command = DeleteMarkerCommand(markersManager: self, marker: markerToDelete, at: indexToDelete)
+        let command = DeleteMarkerCommand(markersManager: self, marker: markerToDelete, at: selectedIndex)
         HistoryManager.shared.execute(command)
         
-        selectedMarker = nil
-        hoveredMarker = nil
+        selectionState = .none
     }
 
     func markersPaths() -> [Path] {

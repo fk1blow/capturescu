@@ -106,7 +106,6 @@ enum MarkerRepresentation {
 }
 
 protocol Marker {
-    // TODO: do i really need this? Maybe remove it
     var id: UUID { get set }
     var style: MarkerStyle { get }
     var isHighlighted: Bool { get set }
@@ -114,22 +113,25 @@ protocol Marker {
     func changeStyle(with style: MarkerStyle)
     func getRepresentation() -> MarkerRepresentation
     func markerBoundingBox(near location: CGPoint) -> BoundingBox?
-    func drawHighlight(onto graphicsContext: GraphicsContext)
     mutating func offsetMarkerBy(dx: CGFloat, dy: CGFloat)
 }
 
 extension Marker {
     func drawHighlight(onto graphicsContext: GraphicsContext) {
-        // it almost feels like this function could be implemented by the drawing marker itself
-        // b/c atm theres no other marker that needs a generic way of doing it
-        // The text marker would need to return the 'frameRepresentation'(not the text)
-        // in order to be useful when doing the "highlighting"
+        guard isHighlighted else { return }
+        
         let representation = self.getRepresentation()
 
         switch representation {
         case .path(let path):
-            let cornerRadius: CGFloat = 8 // Adjust the corner radius as needed
-            let expandedRect = path.boundingRect.insetBy(dx: -10, dy: -10) // Increase the size by 10 points
+            let cornerRadius: CGFloat = 8
+            let expandedRect = path.boundingRect.insetBy(dx: -10, dy: -10)
+            let newPath = RoundedRectangle(cornerRadius: cornerRadius)
+                .path(in: expandedRect)
+            graphicsContext.stroke(newPath, with: .color(self.style.strokeColor.color), lineWidth: 2)
+        case .text(let textRep):
+            let cornerRadius: CGFloat = 8
+            let expandedRect = textRep.frame.insetBy(dx: -10, dy: -10)
             let newPath = RoundedRectangle(cornerRadius: cornerRadius)
                 .path(in: expandedRect)
             graphicsContext.stroke(newPath, with: .color(self.style.strokeColor.color), lineWidth: 2)

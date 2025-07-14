@@ -53,8 +53,8 @@ struct ColorPickerButton: View {
     }
 
     private func getSelectedColor() -> MarkerColor {
-        if markerManager.selectedMarker != nil {
-            return markerManager.selectedMarker!.marker.style.strokeColor
+        if let selectedMarker = markerManager.selectedMarker {
+            return selectedMarker.style.strokeColor
         }
         return selectionManager.selectedColor
     }
