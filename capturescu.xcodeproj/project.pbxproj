@@ -12,8 +12,6 @@
 		2B0B088E2CA0338700FA6C98 /* HitDetection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B0B088D2CA0338700FA6C98 /* HitDetection.swift */; };
 		2B0D4A9E2CBBAA9A00647C79 /* Path+Points.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B0D4A9D2CBBAA9A00647C79 /* Path+Points.swift */; };
 		2B0D4AA02CBBC89800647C79 /* MarkersManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B0D4A9F2CBBC89800647C79 /* MarkersManager.swift */; };
-		63CCAA6E2DCE14D4ABD3180F /* InteractionStateManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 019BF7DB2C95E4218A446DA4 /* InteractionStateManager.swift */; };
-		4418A6C3E01A748BB35B4E10 /* GestureHandlers.swift in Sources */ = {isa = PBXBuildFile; fileRef = E96CC6DFE20A4E34900C18BA /* GestureHandlers.swift */; };
 		2B0D4AA22CBBD66600647C79 /* AltHitDetection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B0D4AA12CBBD66600647C79 /* AltHitDetection.swift */; };
 		2B1C58A82CB5C66900EF826D /* DrawingSurfaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B1C58A72CB5C66900EF826D /* DrawingSurfaceView.swift */; };
 		2B1C58AA2CB5C7D200EF826D /* PointerToolView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B1C58A92CB5C7D200EF826D /* PointerToolView.swift */; };
@@ -88,8 +86,6 @@
 		2B0B088D2CA0338700FA6C98 /* HitDetection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HitDetection.swift; sourceTree = "<group>"; };
 		2B0D4A9D2CBBAA9A00647C79 /* Path+Points.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Path+Points.swift"; sourceTree = "<group>"; };
 		2B0D4A9F2CBBC89800647C79 /* MarkersManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkersManager.swift; sourceTree = "<group>"; };
-		019BF7DB2C95E4218A446DA4 /* InteractionStateManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InteractionStateManager.swift; sourceTree = "<group>"; };
-		E96CC6DFE20A4E34900C18BA /* GestureHandlers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GestureHandlers.swift; sourceTree = "<group>"; };
 		2B0D4AA12CBBD66600647C79 /* AltHitDetection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AltHitDetection.swift; sourceTree = "<group>"; };
 		2B1C58A72CB5C66900EF826D /* DrawingSurfaceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DrawingSurfaceView.swift; sourceTree = "<group>"; };
 		2B1C58A92CB5C7D200EF826D /* PointerToolView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PointerToolView.swift; sourceTree = "<group>"; };
@@ -179,7 +175,6 @@
 			children = (
 				2B1C58A72CB5C66900EF826D /* DrawingSurfaceView.swift */,
 				2B0D4A9F2CBBC89800647C79 /* MarkersManager.swift */,
-				019BF7DB2C95E4218A446DA4 /* InteractionStateManager.swift */,
 				2B1C58AC2CB5D90900EF826D /* Marker.swift */,
 				2B1CF0B22CB8501A00680F38 /* DrawingMarker.swift */,
 				2B1CF0B42CB8504E00680F38 /* ImageMarker.swift */,
@@ -210,7 +205,6 @@
 			children = (
 				2B00C2642D18464B0001B914 /* Accesories */,
 				2B1C58A92CB5C7D200EF826D /* PointerToolView.swift */,
-				E96CC6DFE20A4E34900C18BA /* GestureHandlers.swift */,
 				2BFDC6A72CB5F2AF00F3A5FE /* PointerTool.swift */,
 				2B1CF0AC2CB838AD00680F38 /* LinePointerTool.swift */,
 				2B1C58AE2CB5DA0C00EF826D /* FreehandPointerTool.swift */,
@@ -505,8 +499,6 @@
 				2B98D8412CA1D1AC00AD23FB /* LineHighlight.swift in Sources */,
 				2BD1E2832CA53EBC0018B6EC /* LineAnnotationTool.swift in Sources */,
 				2B0D4AA02CBBC89800647C79 /* MarkersManager.swift in Sources */,
-				63CCAA6E2DCE14D4ABD3180F /* InteractionStateManager.swift in Sources */,
-				4418A6C3E01A748BB35B4E10 /* GestureHandlers.swift in Sources */,
 				2BA4A4AF2BFB46A400D8351A /* KeyEventHandlingView.swift in Sources */,
 				2B9004AF2CB20DA900E240D5 /* CaptureScreenshotBounds.swift in Sources */,
 				2B4D22702CB7EABF0082C06E /* SizePickerButton.swift in Sources */,

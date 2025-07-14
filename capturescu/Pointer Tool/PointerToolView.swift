@@ -8,86 +8,14 @@
 import Foundation
 import SwiftUI
 
-enum DragState {
-  case singleClick
-  case doubleClick
-  case dragging
-}
 
-// MARK: - Click Gesture Handler
-class ClickGestureHandler: ObservableObject {
-    private var lastClickTime: Date? = nil
-    private var lastClickLocation: CGPoint? = nil
-    
-    private let doubleClickTimeWindow: TimeInterval = 0.5
-    private let doubleClickDistanceThreshold: CGFloat = 5.0
-    
-    func handleClick(at location: CGPoint, markersManager: MarkersManager, toolsManager: ToolsManager) {
-        let currentTime = Date()
-        
-        // Check for double-click
-        if let lastTime = lastClickTime,
-           let lastLocation = lastClickLocation,
-           currentTime.timeIntervalSince(lastTime) < doubleClickTimeWindow,
-           distance(from: location, to: lastLocation) < doubleClickDistanceThreshold {
-            
-            handleDoubleClick(at: location, markersManager: markersManager, toolsManager: toolsManager)
-            
-            // Reset click tracking
-            lastClickTime = nil
-            lastClickLocation = nil
-        } else {
-            handleSingleClick(at: location, markersManager: markersManager, toolsManager: toolsManager)
-            
-            // Track this click for potential double-click
-            lastClickTime = currentTime
-            lastClickLocation = location
-        }
-    }
-    
-    private func handleSingleClick(at location: CGPoint, markersManager: MarkersManager, toolsManager: ToolsManager) {
-        if !markersManager.isHovering {
-            markersManager.handleInteractionEvent(.clearSelection)
-        }
-        toolsManager.pointerTool.pointerClicked(at: location)
-    }
-    
-    private func handleDoubleClick(at location: CGPoint, markersManager: MarkersManager, toolsManager: ToolsManager) {
-        if let hoveredMarker = markersManager.hoveredMarker,
-           let hoveredIndex = markersManager.hoveredMarkerIndex {
-            // Validate index bounds
-            guard hoveredIndex >= 0 && hoveredIndex < markersManager.markers.count else {
-                print("Warning: Invalid marker index for double-click")
-                return
-            }
-            
-            // Validate marker still exists at that index
-            guard markersManager.markers[hoveredIndex].id == hoveredMarker.id else {
-                print("Warning: Marker moved or deleted during double-click")
-                return
-            }
-            
-            if hoveredMarker is TextMarker {
-                if let textTool = toolsManager.pointerTool as? TextPointerTool {
-                    textTool.editExistingMarker(hoveredMarker as! TextMarker, at: location, index: hoveredIndex)
-                }
-            }
-        }
-    }
-    
-    private func distance(from point1: CGPoint, to point2: CGPoint) -> CGFloat {
-        let dx = point1.x - point2.x
-        let dy = point1.y - point2.y
-        return sqrt(dx * dx + dy * dy)
-    }
-}
 
 struct PointerToolView: View {
   @EnvironmentObject var toolsManager: ToolsManager
   @EnvironmentObject var markersManager: MarkersManager
 
-  @StateObject private var gestureCoordinator = GestureCoordinator()
-  @StateObject private var clickHandler = ClickGestureHandler()
+  @State private var isDragging = false
+  @State private var dragStartPoint: CGPoint = .zero
 
   var body: some View {
     ZStack(
@@ -97,12 +25,10 @@ struct PointerToolView: View {
           .contentShape(Rectangle())
           .gesture(
             DragGesture(minimumDistance: 0, coordinateSpace: .local)
-              .onChanged(handleDragGestureChanged)
-              .onEnded(handleDragGestureEnd)
+              .onChanged(handleDragChanged)
+              .onEnded(handleDragEnded)
           )
-          .onContinuousHover { phase in
-            handleContinuousHover(phase: phase)
-          }
+          .onContinuousHover(perform: handleHover)
 
         toolsManager.pointerTool.renderAccessoryView(onDone: { marker in
           if let textTool = toolsManager.pointerTool as? TextPointerTool,
@@ -124,42 +50,80 @@ struct PointerToolView: View {
       })
   }
 
-  private func handleDragGestureChanged(_ value: DragGesture.Value) {
+  private func handleDragChanged(_ value: DragGesture.Value) {
     let location = value.location
     let translation = value.translation
     
-    // Handle start of gesture (no previous translation)
+    // Start of gesture (no previous translation)
     if translation.width == 0 && translation.height == 0 {
-      gestureCoordinator.handleGestureStart(at: location, markersManager: markersManager, toolsManager: toolsManager)
+      dragStartPoint = location
+      markersManager.hoverMarker(at: location)
+      
+      if markersManager.isHovering {
+        // Start marker selection/drag
+        markersManager.selectMarker(at: location)
+        markersManager.startDragOperation()
+        isDragging = true
+      } else {
+        // Start drawing
+        markersManager.clearSelection()
+        toolsManager.pointerTool.beginMarker(at: location)
+      }
       return
     }
     
-    // Handle drag movement
-    gestureCoordinator.handleGestureDrag(at: location, markersManager: markersManager, toolsManager: toolsManager)
-  }
-
-  private func handleDragGestureEnd(_ value: DragGesture.Value) {
-    let location = value.location
-    let translation = value.translation
-    
-    // Handle end of gesture
-    gestureCoordinator.handleGestureEnd(at: location, markersManager: markersManager, toolsManager: toolsManager)
-    
-    // Handle click if no drag occurred
-    if translation.width == 0 && translation.height == 0 {
-      clickHandler.handleClick(at: location, markersManager: markersManager, toolsManager: toolsManager)
+    // Continue gesture
+    if isDragging && markersManager.selectedMarkerIndex != nil {
+      // Move selected marker - calculate incremental delta
+      let deltaX = location.x - dragStartPoint.x
+      let deltaY = location.y - dragStartPoint.y
+      markersManager.moveSelectedMarkerDirect(deltaX: deltaX, deltaY: deltaY)
+      dragStartPoint = location
+    } else if !isDragging {
+      // Continue drawing
+      toolsManager.pointerTool.updateMarker(at: location)
     }
   }
 
+  private func handleDragEnded(_ value: DragGesture.Value) {
+    let location = value.location
+    let translation = value.translation
+    
+    if isDragging {
+      // End marker drag
+      markersManager.endDragOperation()
+      isDragging = false
+    } else {
+      // End drawing or handle click
+      if translation.width == 0 && translation.height == 0 {
+        // Simple click
+        handleClick(at: location)
+      } else {
+        // End drawing
+        let marker = toolsManager.pointerTool.getMarker()
+        toolsManager.pointerTool.endMarker(at: location)
+        markersManager.addMarker(marker: marker)
+      }
+    }
+    
+    dragStartPoint = .zero
+  }
 
-  private func handleContinuousHover(phase: HoverPhase) {
+  private func handleClick(at location: CGPoint) {
+    if markersManager.isHovering {
+      markersManager.selectMarker(at: location)
+    } else {
+      markersManager.clearSelection()
+    }
+    toolsManager.pointerTool.pointerClicked(at: location)
+  }
+
+  private func handleHover(_ phase: HoverPhase) {
     switch phase {
     case .active(let location):
-      // Handle mouse movement when no gesture is active
-      gestureCoordinator.handleMouseMove(at: location, markersManager: markersManager)
+      markersManager.hoverMarker(at: location)
     case .ended:
-      // Mouse left the view area
-      gestureCoordinator.handleMouseExit(markersManager: markersManager)
+      markersManager.clearHover()
     }
   }
 }

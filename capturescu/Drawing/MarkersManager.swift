@@ -8,11 +8,6 @@
 import Foundation
 import SwiftUI
 
-enum MarkerSelectionState {
-    case none
-    case hovered(index: Int)
-    case selected(index: Int)
-}
 
 protocol MarkerCommand {
     func execute()
@@ -108,20 +103,14 @@ class HistoryManager: ObservableObject {
 
 class MarkersManager: ObservableObject {
     @Published var markers: [Marker] = []
-    @Published var selectionState: MarkerSelectionState = .none
-    
-    // New interaction state manager
-    private var interactionStateManager: InteractionStateManager?
+    @Published var selectedMarkerIndex: Int? = nil
+    @Published var hoveredMarkerIndex: Int? = nil
     
     // Simplified drag state tracking
     private var isDragging = false
     private var dragStartPosition: CGPoint = .zero
     private var draggedMarkerID: UUID?
     
-    // Initialize interaction state manager
-    func initializeInteractionStateManager() {
-        interactionStateManager = InteractionStateManager(markersManager: self)
-    }
     
     // Set up undo/redo notification callback
     func setupUndoRedoNotification(toolsManager: ToolsManager) {
@@ -130,28 +119,6 @@ class MarkersManager: ObservableObject {
         }
     }
     
-    // Computed properties for easy access to current markers
-    var hoveredMarkerIndex: Int? {
-        return interactionStateManager?.hoveredMarkerIndex ?? {
-            switch selectionState {
-            case .hovered(let index):
-                return index
-            default:
-                return nil
-            }
-        }()
-    }
-    
-    var selectedMarkerIndex: Int? {
-        return interactionStateManager?.selectedMarkerIndex ?? {
-            switch selectionState {
-            case .selected(let index):
-                return index
-            default:
-                return nil
-            }
-        }()
-    }
     
     var hoveredMarker: Marker? {
         guard let index = hoveredMarkerIndex, index < markers.count else { return nil }
@@ -163,21 +130,8 @@ class MarkersManager: ObservableObject {
         return markers[index]
     }
     
-    // Interaction state manager interface
-    func handleInteractionEvent(_ event: InteractionEvent) {
-        interactionStateManager?.handleEvent(event)
-    }
-    
     var isHovering: Bool {
-        return interactionStateManager?.isHovering ?? false
-    }
-    
-    var isDrawing: Bool {
-        return interactionStateManager?.isDrawing ?? false
-    }
-    
-    var isDraggingMarker: Bool {
-        return interactionStateManager?.isDragging ?? false
+        return hoveredMarkerIndex != nil
     }
 
     func addMarker(marker: Marker) {
@@ -196,23 +150,45 @@ class MarkersManager: ObservableObject {
         return isHovering
     }
 
-    // Legacy methods for backward compatibility - these now delegate to InteractionStateManager
-    func selectHoveredMarker() {
-        // This is now handled by InteractionStateManager automatically
-        // when a marker is clicked while hovered
+    // Dead simple selection methods
+    func selectMarker(at point: CGPoint) {
+        let index = findMarkerIndex(at: point)
+        selectedMarkerIndex = index
+        
+        // Update highlighting
+        clearAllHighlights()
+        if let index = index, index < markers.count {
+            markers[index].showHighlight()
+        }
     }
-
-    func clearSelectedMarker() {
-        handleInteractionEvent(.clearSelection)
+    
+    func hoverMarker(at point: CGPoint) {
+        let index = findMarkerIndex(at: point)
+        hoveredMarkerIndex = index
     }
-
-    func setHoveredMarker(on marker: Marker, atIndex: Int) {
-        // This is now handled by InteractionStateManager automatically
-        // when mouse position changes
+    
+    func clearSelection() {
+        selectedMarkerIndex = nil
+        clearAllHighlights()
     }
-
-    func clearHoveredMarker() {
-        handleInteractionEvent(.clearSelection)
+    
+    func clearHover() {
+        hoveredMarkerIndex = nil
+    }
+    
+    // Single efficient hit detection method
+    private func findMarkerIndex(at point: CGPoint) -> Int? {
+        // Iterate in reverse order so top markers are hit first
+        return markers.lastIndex { marker in
+            marker.contains(point)
+        }
+    }
+    
+    // Helper method to clear all marker highlights
+    private func clearAllHighlights() {
+        for i in 0..<markers.count {
+            markers[i].hideHighlight()
+        }
     }
 
     // Simplified single method for marker movement
@@ -290,7 +266,8 @@ class MarkersManager: ObservableObject {
         let command = DeleteMarkerCommand(markersManager: self, marker: markerToDelete, at: selectedIndex)
         HistoryManager.shared.execute(command)
         
-        selectionState = .none
+        selectedMarkerIndex = nil
+        clearAllHighlights()
     }
 
     func markersPaths() -> [Path] {

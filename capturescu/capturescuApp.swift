@@ -15,9 +15,6 @@ struct capturescuApp: App {
     private let historyManager = HistoryManager.shared
     
     init() {
-        // Initialize the interaction state manager after markers manager is created
-        markersManager.initializeInteractionStateManager()
-        
         // Set up undo/redo notification for tools
         markersManager.setupUndoRedoNotification(toolsManager: selectionManager)
     }

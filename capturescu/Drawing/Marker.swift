@@ -117,6 +117,11 @@ protocol Marker {
 }
 
 extension Marker {
+    // Dead simple hit detection
+    func contains(_ point: CGPoint) -> Bool {
+        return markerBoundingBox(near: point) != nil
+    }
+    
     func drawHighlight(onto graphicsContext: GraphicsContext) {
         guard isHighlighted else { return }
         
