@@ -9,60 +9,60 @@ import Foundation
 import SwiftUI
 
 struct TextMarker: Marker {
-    var id = UUID()
+  var id = UUID()
 
-    var style: MarkerStyle
-    // var path: Path
-    var isHighlighted: Bool = false
+  var style: MarkerStyle
+  // var path: Path
+  var isHighlighted: Bool = false
 
-    var textValueRepresentation: String = ""
-    // var locationRepresentation: CGPoint = CGPointZero
-    var frameRepresentation: CGRect = CGRectZero
+  var textValueRepresentation: String = ""
+  // var locationRepresentation: CGPoint = CGPointZero
+  var frameRepresentation: CGRect = CGRectZero
 
-    init(markerColor: MarkerColor, textValue: String, frame: CGRect) {
-        self.style = MarkerStyle(strokeColor: markerColor)
-        self.textValueRepresentation = textValue
-        self.frameRepresentation = frame
+  init(markerColor: MarkerColor, textValue: String, frame: CGRect) {
+    style = MarkerStyle(strokeColor: markerColor)
+    textValueRepresentation = textValue
+    frameRepresentation = frame
+  }
+
+  init(markerColor: MarkerColor) {
+    self.init(markerColor: markerColor, textValue: "", frame: CGRectZero)
+  }
+
+  func draw(onto ctx: GraphicsContext) {
+    let text = Text(verbatim: textValueRepresentation).font(.system(size: 14))
+    var resolvedText = ctx.resolve(text)
+    resolvedText.shading = .color(style.strokeColor.color)
+    ctx.draw(resolvedText, in: frameRepresentation)
+
+    if isHighlighted {
+      drawHighlight(onto: ctx)
     }
+  }
 
-    init(markerColor: MarkerColor) {
-        self.init(markerColor: markerColor, textValue: "", frame: CGRectZero)
-    }
+  func changeStyle(with _: MarkerStyle) {
+    // TODO:
+  }
 
-    func draw(onto ctx: GraphicsContext) {
-        let text = Text(verbatim: textValueRepresentation).font(.system(size: 14))
-        var resolvedText = ctx.resolve(text)
-        resolvedText.shading = .color(self.style.strokeColor.color)
-        ctx.draw(resolvedText, in: self.frameRepresentation)
+  func getRepresentation() -> MarkerRepresentation {
+    return MarkerRepresentation.text(
+      TextMarkerRepresentation(frame: frameRepresentation, text: textValueRepresentation)
+    )
+  }
 
-        if self.isHighlighted {
-            self.drawHighlight(onto: ctx)
-        }
-    }
+  func markerBoundingBox(near location: CGPoint) -> BoundingBox? {
+    return isPointNearRect(testPoint: location, frame: frameRepresentation)
+  }
 
-    func changeStyle(with _: MarkerStyle) {
-        // TODO:
-    }
+  func drawHighlight(onto ctx: GraphicsContext) {
+    let cornerRadius: CGFloat = 8
+    let expandedRect = frameRepresentation.insetBy(dx: -10, dy: -10)
+    let newPath = RoundedRectangle(cornerRadius: cornerRadius)
+      .path(in: expandedRect)
+    ctx.stroke(newPath, with: .color(style.strokeColor.color), lineWidth: 2)
+  }
 
-    func getRepresentation() -> MarkerRepresentation {
-        return MarkerRepresentation.text(
-            TextMarkerRepresentation(frame: self.frameRepresentation, text: self.textValueRepresentation)
-        )
-    }
-
-    func markerBoundingBox(near location: CGPoint) -> BoundingBox? {
-        return isPointNearRect(testPoint: location, frame: self.frameRepresentation)
-    }
-
-    func drawHighlight(onto ctx: GraphicsContext) {
-        let cornerRadius: CGFloat = 8
-        let expandedRect = self.frameRepresentation.insetBy(dx: -10, dy: -10)
-        let newPath = RoundedRectangle(cornerRadius: cornerRadius)
-            .path(in: expandedRect)
-        ctx.stroke(newPath, with: .color(self.style.strokeColor.color), lineWidth: 2)
-    }
-
-    mutating func offsetMarkerBy(dx: CGFloat, dy: CGFloat) {
-        self.frameRepresentation = self.frameRepresentation.offsetBy(dx: dx, dy: dy)
-    }
+  mutating func offsetMarkerBy(dx: CGFloat, dy: CGFloat) {
+    frameRepresentation = frameRepresentation.offsetBy(dx: dx, dy: dy)
+  }
 }

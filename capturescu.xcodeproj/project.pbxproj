@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 56;
+	objectVersion = 70;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -139,6 +139,10 @@
 		2BFDC6A72CB5F2AF00F3A5FE /* PointerTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PointerTool.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		2B00C2642D18464B0001B914 /* Accesories */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Accesories; sourceTree = "<group>"; };
+/* End PBXFileSystemSynchronizedRootGroup section */
+
 /* Begin PBXFrameworksBuildPhase section */
 		2B9145AC2BFA2B7D00CA8097 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
@@ -199,6 +203,7 @@
 		2B1CF0B12CB84FD400680F38 /* Pointer Tool */ = {
 			isa = PBXGroup;
 			children = (
+				2B00C2642D18464B0001B914 /* Accesories */,
 				2B1C58A92CB5C7D200EF826D /* PointerToolView.swift */,
 				2BFDC6A72CB5F2AF00F3A5FE /* PointerTool.swift */,
 				2B1CF0AC2CB838AD00680F38 /* LinePointerTool.swift */,
@@ -354,6 +359,9 @@
 			buildRules = (
 			);
 			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				2B00C2642D18464B0001B914 /* Accesories */,
 			);
 			name = capturescu;
 			packageProductDependencies = (

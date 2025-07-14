@@ -21,6 +21,8 @@ I can copy/paste an image, add freehand drawing, arrows, shapes, text, and also 
 
 [exclusive gestures](https://developer.apple.com/documentation/swiftui/exclusivegesture)
 
+[explanation from gtp](https://chatgpt.com/share/67462560-7d68-8011-92ed-56411336f403)
+
 - use the composing gestures to handle clicks inside the pointer view
 - implement editing mode on the text marker
 - calculate the text marker width on end so that multiple markers don’t appear as having the same width
@@ -32,4 +34,3 @@ I can copy/paste an image, add freehand drawing, arrows, shapes, text, and also 
 - [Chapter 4. Coordinates and conditionals in PostScript](https://personal.math.ubc.ca/~cass/graphics/text/old.pdf/last/ch4.pdf)
 - [mathematics in action affine transformations](https://scientificgems.wordpress.com/2014/11/28/mathematics-in-action-affine-transformations-and-postscript/)
 - [homogenous coordinates](https://www.tomdalling.com/blog/modern-opengl/explaining-homogenous-coordinates-and-projective-geometry/)
-
