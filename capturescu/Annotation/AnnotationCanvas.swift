@@ -18,7 +18,6 @@ struct AnnotationCanvas: View {
 
     @State private var isDrawing = false
     @State private var isMoving = false
-    @State private var highlight: LineHighlight?
     @State private var lastDragPosition: CGPoint? = nil
 
     var body: some View {
@@ -60,14 +59,9 @@ struct AnnotationCanvas: View {
     private func handleDragGestureStart(_ value: DragGesture.Value) {
         // gesture just began, which means we need to move to the starting point
         if value.translation.width + value.translation.height == 0 {
-            if highlight != nil {
-                isMoving = true
-                isDrawing = false
-            } else {
-                isDrawing = true
-                isMoving = false
-                onDrawStart(value.location)
-            }
+            isDrawing = true
+            isMoving = false
+            onDrawStart(value.location)
         } else {
             if value.translation.width + value.translation.height == 0 {
                 return
@@ -85,7 +79,6 @@ struct AnnotationCanvas: View {
         lastDragPosition = nil
 
         if isMoving {
-            highlight = nil
             isMoving = false
         } else {
             onDrawEnd(value.location)
