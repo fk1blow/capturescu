@@ -38,21 +38,23 @@ struct TextPointerToolAccessoryView: View {
         .background(Color.gray.opacity(0.1))
         .cornerRadius(5)
         .overlay(RoundedRectangle(cornerRadius: 5).stroke(Color.gray.opacity(0.5)))
-        .offset(x: position.x, y: position.y)
+        .position(x: position.x + editorWidth/2, y: position.y + textEditorHeight/2)  // Use position instead of offset
         .focused($isFocused)
-        .onKeyPress(.escape) {
-          escapeKeyPressed()
-          return .handled
-        }
-        .onKeyPress(keys: [.return], phases: [.down]) { keyPress in
-          if keyPress.modifiers.contains(.shift) {
-            // Shift+Enter: Allow new line (don't handle, let TextEditor handle it)
-            return .ignored
-          } else {
-            // Enter: Save changes
-            saveChanges()
+        .onKeyPress { keyPress in
+          if keyPress.key == .escape {
+            escapeKeyPressed()
             return .handled
+          } else if keyPress.key == .return {
+            if keyPress.modifiers.contains(.shift) {
+              // Shift+Enter: Allow new line (don't handle, let TextEditor handle it)
+              return .ignored
+            } else {
+              // Enter: Save changes
+              saveChanges()
+              return .handled
+            }
           }
+          return .ignored
         }
     }
     .onAppear {
