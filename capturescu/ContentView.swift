@@ -11,11 +11,21 @@ import SwiftUI
 struct CapturedPasteboardImage {
     var image: CGImage
     var position: CGPoint
+    var scale: CGFloat = 1.0
+    
+    // Computed property for display size
+    var displaySize: CGSize {
+        return CGSize(
+            width: CGFloat(image.width) * scale,
+            height: CGFloat(image.height) * scale
+        )
+    }
 }
 
 struct ContentView: View, KeyboardCommandResponder {
     @EnvironmentObject var markersManager: MarkersManager
     @EnvironmentObject var toolsManager: ToolsManager
+    @ObservedObject private var windowSizeManager = WindowSizeManager.shared
 
     @State var capturedImage: CapturedPasteboardImage?
     @State var drawingSurfaceBounds: CGRect = .init()
@@ -71,9 +81,34 @@ struct ContentView: View, KeyboardCommandResponder {
 
     private func handlePasteAction() {
         if let image = NSPasteboard.getImage() {
-            let x = Int(drawingSurfaceBounds.width / 2) - (image.width / 2)
-            let y = Int(drawingSurfaceBounds.height / 2) - (image.height / 2)
-            capturedImage = CapturedPasteboardImage(image: image, position: CGPoint(x: x, y: y))
+            let imageSize = CGSize(width: image.width, height: image.height)
+            
+            // Calculate scale factor for the image
+            let scale = windowSizeManager.calculateImageScale(for: imageSize)
+            
+            // Calculate new window size based on scaled image
+            let windowSize = windowSizeManager.calculateWindowSize(for: imageSize)
+            
+            // Resize the window to fit the image
+            windowSizeManager.resizeWindow(to: windowSize)
+            
+            // Wait for window resize to complete, then position the image
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                let scaledSize = CGSize(
+                    width: imageSize.width * scale,
+                    height: imageSize.height * scale
+                )
+                
+                // Center the image in the window
+                let x = (windowSize.width - scaledSize.width) / 2
+                let y = (windowSize.height - scaledSize.height) / 2
+                
+                capturedImage = CapturedPasteboardImage(
+                    image: image,
+                    position: CGPoint(x: x, y: y),
+                    scale: scale
+                )
+            }
         } else {
             print("No image found in pasteboard")
         }

@@ -19,19 +19,19 @@ struct DrawingSurfaceView: View {
             if capturedImage != nil {
                 let x = capturedImage!.position.x
                 let y = capturedImage!.position.y
-                let width = capturedImage!.image.width
-                let height = capturedImage!.image.height
+                // Use actual image dimensions multiplied by scale factor
+                let width = CGFloat(capturedImage!.image.width) * capturedImage!.scale
+                let height = CGFloat(capturedImage!.image.height) * capturedImage!.scale
 
                 ctx.draw(
                     Image(
                         capturedImage!.image,
-                        scale: 1.0, // this can be used when implementing the zoom feature
+                        scale: 1.0,
                         label: Text("")
                     ),
                     in: CGRect(
                         origin: CGPoint(x: x, y: y),
-                        size: CGSize(width: width,
-                                     height: height)
+                        size: CGSize(width: width, height: height)
                     )
                 )
             }
