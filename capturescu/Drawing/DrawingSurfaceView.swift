@@ -15,18 +15,31 @@ struct DrawingSurfaceView: View {
     @EnvironmentObject var markersManager: MarkersManager
 
     var body: some View {
-        Canvas { ctx, _ in
+        Canvas { ctx, size in
             if capturedImage != nil {
                 let x = capturedImage!.position.x
                 let y = capturedImage!.position.y
-                // Use actual image dimensions multiplied by scale factor
-                let width = CGFloat(capturedImage!.image.width) * capturedImage!.scale
-                let height = CGFloat(capturedImage!.image.height) * capturedImage!.scale
+                
+                // Get the screen scale to handle Retina displays properly
+                let screenScale = NSScreen.main?.backingScaleFactor ?? 1.0
+                
+                // Convert pixels to points by dividing by screen scale, then apply user scale
+                let width = (CGFloat(capturedImage!.image.width) / screenScale) * capturedImage!.scale
+                let height = (CGFloat(capturedImage!.image.height) / screenScale) * capturedImage!.scale
 
+                print("🎨 CANVAS RENDER DEBUG:")
+                print("   Canvas size: \(size.width) x \(size.height)")
+                print("   Screen scale: \(screenScale)")
+                print("   Image original pixels: \(capturedImage!.image.width) x \(capturedImage!.image.height)")
+                print("   Image original points: \(CGFloat(capturedImage!.image.width) / screenScale) x \(CGFloat(capturedImage!.image.height) / screenScale)")
+                print("   Image user scale: \(capturedImage!.scale)")
+                print("   Rendering at: \(width) x \(height)")
+                print("   Position: (\(x), \(y))")
+                
                 ctx.draw(
                     Image(
                         capturedImage!.image,
-                        scale: 1.0,
+                        scale: screenScale, // Use screen scale to convert pixels to points
                         label: Text("")
                     ),
                     in: CGRect(

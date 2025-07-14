@@ -33,10 +33,17 @@ class WindowSizeManager: ObservableObject {
     // Calculate optimal window size based on image dimensions
     func calculateWindowSize(for imageSize: CGSize) -> CGSize {
         let maxSize = maxWindowSize
+        let screenScale = NSScreen.main?.backingScaleFactor ?? 1.0
         
-        // Start with the actual image size (no upscaling)
-        var windowWidth = imageSize.width
-        var windowHeight = imageSize.height
+        // Convert pixel dimensions to points
+        let imageSizeInPoints = CGSize(
+            width: imageSize.width / screenScale,
+            height: imageSize.height / screenScale
+        )
+        
+        // Start with the actual image size in points (no upscaling)
+        var windowWidth = imageSizeInPoints.width
+        var windowHeight = imageSizeInPoints.height
         
         // Only scale down if image is larger than screen
         if windowWidth > maxSize.width || windowHeight > maxSize.height {
@@ -58,15 +65,22 @@ class WindowSizeManager: ObservableObject {
     // Calculate image scale factor based on window constraints
     func calculateImageScale(for imageSize: CGSize) -> CGFloat {
         let maxSize = maxWindowSize
+        let screenScale = NSScreen.main?.backingScaleFactor ?? 1.0
+        
+        // Convert pixel dimensions to points
+        let imageSizeInPoints = CGSize(
+            width: imageSize.width / screenScale,
+            height: imageSize.height / screenScale
+        )
         
         // If image fits within max size, no scaling needed (keep at actual size)
-        if imageSize.width <= maxSize.width && imageSize.height <= maxSize.height {
+        if imageSizeInPoints.width <= maxSize.width && imageSizeInPoints.height <= maxSize.height {
             return 1.0
         }
         
         // Only scale down if image is larger than max size
-        let widthScale = maxSize.width / imageSize.width
-        let heightScale = maxSize.height / imageSize.height
+        let widthScale = maxSize.width / imageSizeInPoints.width
+        let heightScale = maxSize.height / imageSizeInPoints.height
         return min(widthScale, heightScale, 1.0) // Never scale above 1.0 (no upscaling)
     }
     
