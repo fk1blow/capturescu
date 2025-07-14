@@ -9,12 +9,33 @@ import Foundation
 import SwiftUI
 import AppKit
 
+// Layout constants for spacing and padding
+struct LayoutConstants {
+    // Image padding on all sides
+    static let imagePadding: CGFloat = 60
+    
+    // Toolbar dimensions and spacing
+    static let toolbarHeight: CGFloat = 58
+    static let toolbarClearance: CGFloat = 60  // Distance between image and toolbar
+    static let toolbarBottomOffset: CGFloat = 24  // Current toolbar offset from bottom
+    
+    // Total additional space needed
+    static let totalHorizontalPadding: CGFloat = imagePadding * 2  // 120px (left + right)
+    static let totalVerticalSpace: CGFloat = imagePadding * 2 + toolbarHeight + toolbarClearance  // 238px
+    
+    // Minimum window dimensions with padding
+    static let baseMinimumWidth: CGFloat = 520
+    static let baseMinimumHeight: CGFloat = 300
+    static let minimumWidth: CGFloat = baseMinimumWidth + totalHorizontalPadding  // 640px
+    static let minimumHeight: CGFloat = baseMinimumHeight + totalVerticalSpace  // 538px
+}
+
 class WindowSizeManager: ObservableObject {
     static let shared = WindowSizeManager()
     
-    // Minimum window size constraints
-    static let minimumWidth: CGFloat = 520
-    static let minimumHeight: CGFloat = 300
+    // Minimum window size constraints (now using LayoutConstants)
+    static let minimumWidth: CGFloat = LayoutConstants.minimumWidth
+    static let minimumHeight: CGFloat = LayoutConstants.minimumHeight
     
     private init() {}
     
@@ -41,25 +62,33 @@ class WindowSizeManager: ObservableObject {
             height: imageSize.height / screenScale
         )
         
-        // Start with the actual image size in points (no upscaling)
-        var windowWidth = imageSizeInPoints.width
-        var windowHeight = imageSizeInPoints.height
+        // Calculate available space for image (accounting for padding and toolbar)
+        let availableWidth = maxSize.width - LayoutConstants.totalHorizontalPadding
+        let availableHeight = maxSize.height - LayoutConstants.totalVerticalSpace
         
-        // Only scale down if image is larger than screen
-        if windowWidth > maxSize.width || windowHeight > maxSize.height {
-            let widthScale = maxSize.width / windowWidth
-            let heightScale = maxSize.height / windowHeight
+        // Start with the actual image size in points (no upscaling)
+        var imageWidth = imageSizeInPoints.width
+        var imageHeight = imageSizeInPoints.height
+        
+        // Only scale down if image is larger than available space
+        if imageWidth > availableWidth || imageHeight > availableHeight {
+            let widthScale = availableWidth / imageWidth
+            let heightScale = availableHeight / imageHeight
             let scale = min(widthScale, heightScale)
             
-            windowWidth *= scale
-            windowHeight *= scale
+            imageWidth *= scale
+            imageHeight *= scale
         }
         
-        // Ensure minimum size
-        windowWidth = max(windowWidth, Self.minimumWidth)
-        windowHeight = max(windowHeight, Self.minimumHeight)
+        // Calculate final window size including padding and toolbar space
+        let windowWidth = imageWidth + LayoutConstants.totalHorizontalPadding
+        let windowHeight = imageHeight + LayoutConstants.totalVerticalSpace
         
-        return CGSize(width: windowWidth, height: windowHeight)
+        // Ensure minimum size
+        let finalWidth = max(windowWidth, Self.minimumWidth)
+        let finalHeight = max(windowHeight, Self.minimumHeight)
+        
+        return CGSize(width: finalWidth, height: finalHeight)
     }
     
     // Calculate image scale factor based on window constraints
@@ -73,14 +102,18 @@ class WindowSizeManager: ObservableObject {
             height: imageSize.height / screenScale
         )
         
-        // If image fits within max size, no scaling needed (keep at actual size)
-        if imageSizeInPoints.width <= maxSize.width && imageSizeInPoints.height <= maxSize.height {
+        // Calculate available space for image (accounting for padding and toolbar)
+        let availableWidth = maxSize.width - LayoutConstants.totalHorizontalPadding
+        let availableHeight = maxSize.height - LayoutConstants.totalVerticalSpace
+        
+        // If image fits within available space, no scaling needed (keep at actual size)
+        if imageSizeInPoints.width <= availableWidth && imageSizeInPoints.height <= availableHeight {
             return 1.0
         }
         
-        // Only scale down if image is larger than max size
-        let widthScale = maxSize.width / imageSizeInPoints.width
-        let heightScale = maxSize.height / imageSizeInPoints.height
+        // Only scale down if image is larger than available space
+        let widthScale = availableWidth / imageSizeInPoints.width
+        let heightScale = availableHeight / imageSizeInPoints.height
         return min(widthScale, heightScale, 1.0) // Never scale above 1.0 (no upscaling)
     }
     

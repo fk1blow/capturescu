@@ -110,10 +110,16 @@ struct ContentView: View, KeyboardCommandResponder {
                 print("   Screen scale: \(screenScale)")
                 print("   Scaled image size (points): \(scaledSize.width) x \(scaledSize.height)")
                 
-                // Center the image in the window
-                let x = (windowSize.width - scaledSize.width) / 2
-                let y = (windowSize.height - scaledSize.height) / 2
-                print("   Image position: (\(x), \(y))")
+                // Calculate available space for image (excluding padding and toolbar)
+                let availableWidth = windowSize.width - LayoutConstants.totalHorizontalPadding
+                let availableHeight = windowSize.height - LayoutConstants.totalVerticalSpace
+                
+                // Position image in available space with padding
+                let x = LayoutConstants.imagePadding + (availableWidth - scaledSize.width) / 2
+                let y = LayoutConstants.imagePadding + (availableHeight - scaledSize.height) / 2
+                
+                print("   Available space: \(availableWidth) x \(availableHeight)")
+                print("   Image position with padding: (\(x), \(y))")
                 
                 capturedImage = CapturedPasteboardImage(
                     image: image,
