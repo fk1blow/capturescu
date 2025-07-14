@@ -45,7 +45,9 @@ struct DrawingMarker: Marker {
     }
 
     func markerBoundingBox(near location: CGPoint) -> BoundingBox? {
-        return HitDetectionManager.shared.isPointNearPath(location, path: path, threshold: 20)
+        let result = HitDetectionManager.shared.isPointNearPath(location, path: path, threshold: 20)
+        print("    DrawingMarker hit detection: location=\(location), path points=\(path.points().count), result=\(result != nil)")
+        return result
     }
 
     mutating func offsetMarkerBy(dx: CGFloat, dy: CGFloat) {

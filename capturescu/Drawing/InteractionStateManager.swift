@@ -266,12 +266,17 @@ class InteractionStateManager: ObservableObject {
     private func findHitMarker(at location: CGPoint) -> Int? {
         guard let markersManager = markersManager else { return nil }
         
+        print("🔍 findHitMarker at \(location), checking \(markersManager.markers.count) markers")
+        
         // Check markers in reverse order (top to bottom)
         for (index, marker) in markersManager.markers.enumerated().reversed() {
-            if marker.markerBoundingBox(near: location) != nil {
+            let boundingBox = marker.markerBoundingBox(near: location)
+            print("  Marker \(index): \(type(of: marker)) -> \(boundingBox != nil ? "HIT" : "MISS")")
+            if boundingBox != nil {
                 return index
             }
         }
+        print("  No markers hit")
         return nil
     }
     
