@@ -175,12 +175,11 @@ struct PointerToolView: View {
   private func handleMoveStart(value _: DragGesture.Value) {
     isMovingMarker = true
     markersManager.selectHoveredMarker()
+    markersManager.startDragOperation()
   }
 
   private func handleMoveUpdate(value: DragGesture.Value) {
     guard markersManager.selectedMarker != nil else { return }
-
-    isMovingMarker = false
 
     let position = value.location
 
@@ -189,10 +188,8 @@ struct PointerToolView: View {
       let deltaX = position.x - lastPosition.x
       let deltaY = position.y - lastPosition.y
 
-      markersManager.moveSelectedMarker(
-        to:
-          CGPoint(x: deltaX, y: deltaY)
-      )
+      // Use direct movement method to avoid creating commands during drag
+      markersManager.moveSelectedMarkerDirect(deltaX: deltaX, deltaY: deltaY)
 
       // Update the last drag position
       lastDragPosition = position
@@ -204,6 +201,7 @@ struct PointerToolView: View {
 
   private func handleMoveEnd(value _: DragGesture.Value) {
     isMovingMarker = false
+    markersManager.endDragOperation()
   }
 
   // #endregion

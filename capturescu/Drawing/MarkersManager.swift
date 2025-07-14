@@ -46,6 +46,18 @@ class HistoryManager: ObservableObject {
         updateCanUndoRedo()
     }
     
+    // Add a command to history without executing it (for operations already performed)
+    func addToHistory(_ command: MarkerCommand) {
+        undoStack.append(command)
+        if undoStack.count > maxHistorySize {
+            undoStack.removeFirst()
+        }
+        
+        redoStack.removeAll()
+        
+        updateCanUndoRedo()
+    }
+    
     func undo() {
         guard let command = undoStack.popLast() else { return }
         
@@ -88,6 +100,11 @@ class MarkersManager: ObservableObject {
     @Published var markers: [Marker] = []
     @Published var hoveredMarker: MarkerSelection?
     @Published var selectedMarker: MarkerSelection?
+    
+    // Drag state tracking for consolidated move commands
+    private var isDragging = false
+    private var dragStartPosition: CGPoint?
+    private var draggedMarkerID: UUID?
 
     func addMarker(marker: Marker) {
         let command = AddMarkerCommand(markersManager: self, marker: marker)
@@ -143,14 +160,59 @@ class MarkersManager: ObservableObject {
         hoveredMarker = nil
     }
 
-    func moveSelectedMarker(to location: CGPoint) {
+    // Start a drag operation - called once when drag begins
+    func startDragOperation() {
         guard let selectedMarker = selectedMarker, selectedMarker.atIndex < markers.count else {
             return
         }
-
-        let marker = markers[selectedMarker.atIndex]
-        let command = MoveMarkerCommand(markersManager: self, markerID: marker.id, deltaX: location.x, deltaY: location.y)
-        HistoryManager.shared.execute(command)
+        
+        isDragging = true
+        draggedMarkerID = selectedMarker.marker.id
+        dragStartPosition = CGPoint.zero // We'll track cumulative delta
+    }
+    
+    // Move marker during drag without creating commands - called repeatedly during drag
+    func moveSelectedMarkerDirect(deltaX: CGFloat, deltaY: CGFloat) {
+        guard let selectedMarker = selectedMarker, selectedMarker.atIndex < markers.count else {
+            return
+        }
+        
+        // Direct movement without command creation
+        markers[selectedMarker.atIndex].offsetMarkerBy(dx: deltaX, dy: deltaY)
+        
+        // Track cumulative movement if we're in a drag operation
+        if isDragging, let startPos = dragStartPosition {
+            dragStartPosition = CGPoint(x: startPos.x + deltaX, y: startPos.y + deltaY)
+        }
+    }
+    
+    // End drag operation and create a single consolidated command
+    func endDragOperation() {
+        guard isDragging,
+              let markerID = draggedMarkerID,
+              let totalDelta = dragStartPosition,
+              totalDelta.x != 0 || totalDelta.y != 0 else {
+            // Reset state even if no actual movement occurred
+            isDragging = false
+            dragStartPosition = nil
+            draggedMarkerID = nil
+            return
+        }
+        
+        // Create a single command for the entire drag operation
+        // Use addToHistory() instead of execute() since the movement was already performed during drag
+        let command = MoveMarkerCommand(markersManager: self, markerID: markerID, deltaX: totalDelta.x, deltaY: totalDelta.y)
+        HistoryManager.shared.addToHistory(command)
+        
+        // Reset drag state
+        isDragging = false
+        dragStartPosition = nil
+        draggedMarkerID = nil
+    }
+    
+    // Legacy method - now just calls the direct movement (for backward compatibility)
+    func moveSelectedMarker(to location: CGPoint) {
+        moveSelectedMarkerDirect(deltaX: location.x, deltaY: location.y)
     }
 
     func deleteSelectedMarker() {
