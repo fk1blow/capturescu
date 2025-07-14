@@ -12,6 +12,7 @@ struct capturescuApp: App {
     private let selectionManager = ToolsManager()
     private let markersManager = MarkersManager()
     private let keyboardManager = KeyboardManager.shared
+    private let historyManager = HistoryManager.shared
 
     var body: some Scene {
         WindowGroup {
@@ -21,6 +22,7 @@ struct capturescuApp: App {
                 ContentView()
                     .environmentObject(selectionManager)
                     .environmentObject(markersManager)
+                    .environmentObject(historyManager)
                     .customWindowStyle()
             }
         }
@@ -35,6 +37,47 @@ struct capturescuApp: App {
                     keyboardManager.trigger(command: .paste)
                 }
                 .keyboardShortcut("v", modifiers: .command)
+            }
+            
+            CommandGroup(replacing: .undoRedo) {
+                Button("Undo") {
+                    keyboardManager.trigger(command: .undo)
+                }
+                .keyboardShortcut("z", modifiers: .command)
+                
+                Button("Redo") {
+                    keyboardManager.trigger(command: .redo)
+                }
+                .keyboardShortcut("z", modifiers: [.command, .shift])
+            }
+            
+            CommandMenu("Tools") {
+                Button("Arrow Tool") {
+                    keyboardManager.trigger(command: .selectArrowTool)
+                }
+                .keyboardShortcut("a", modifiers: [])
+                
+                Button("Freehand Tool") {
+                    keyboardManager.trigger(command: .selectFreehandTool)
+                }
+                .keyboardShortcut("f", modifiers: [])
+                
+                Button("Line Tool") {
+                    keyboardManager.trigger(command: .selectLineTool)
+                }
+                .keyboardShortcut("l", modifiers: [])
+                
+                Button("Text Tool") {
+                    keyboardManager.trigger(command: .selectTextTool)
+                }
+                .keyboardShortcut("t", modifiers: [])
+            }
+            
+            CommandGroup(after: .textEditing) {
+                Button("Delete Marker") {
+                    keyboardManager.trigger(command: .deleteMarker)
+                }
+                .keyboardShortcut(.delete, modifiers: [])
             }
         }
     }

@@ -5,6 +5,16 @@ enum KeyboardCommand {
     case copy
     case paste
     case cut
+    // Tool selection
+    case selectArrowTool
+    case selectFreehandTool
+    case selectLineTool
+    case selectTextTool
+    // Marker operations
+    case deleteMarker
+    // Undo/Redo
+    case undo
+    case redo
     case custom(name: String) // Allows for future expansion
 }
 

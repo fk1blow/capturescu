@@ -64,7 +64,6 @@ struct ContentView: View, KeyboardCommandResponder {
         .keyboardCommands(handler: self)
     }
 
-    // TODO: add the "delete" command as well(see the handleKeyPressAction)
     func processCommand(_ command: KeyboardCommand) {
         print("command received: \(command)")
 
@@ -74,6 +73,27 @@ struct ContentView: View, KeyboardCommandResponder {
 
         case .paste:
             handlePasteAction()
+            
+        case .selectArrowTool:
+            toolsManager.selectTool(named: PointerToolName.ArrowPointer)
+            
+        case .selectFreehandTool:
+            toolsManager.selectTool(named: PointerToolName.FreehandPointer)
+            
+        case .selectLineTool:
+            toolsManager.selectTool(named: PointerToolName.LinePointer)
+            
+        case .selectTextTool:
+            toolsManager.selectTool(named: PointerToolName.TextPointer)
+            
+        case .deleteMarker:
+            markersManager.deleteSelectedMarker()
+            
+        case .undo:
+            HistoryManager.shared.undo()
+            
+        case .redo:
+            HistoryManager.shared.redo()
 
         default:
             break
@@ -149,28 +169,6 @@ struct ContentView: View, KeyboardCommandResponder {
         NSPasteboard.addImage(capture: capture)
     }
 
-    // TODO: should deal with this another time!
-    private func handleKeyPressAction(chars: String, keyCode: UInt16) {
-        switch chars {
-        case "a":
-            toolsManager.selectTool(named: PointerToolName.ArrowPointer)
-        case "f":
-            toolsManager.selectTool(named: PointerToolName.FreehandPointer)
-        case "l":
-            toolsManager.selectTool(named: PointerToolName.LinePointer)
-        case "t":
-            toolsManager.selectTool(named: PointerToolName.TextPointer)
-        default:
-            break
-        }
-
-        switch keyCode {
-        case 51:
-            markersManager.deleteSelectedMarker()
-        default:
-            break
-        }
-    }
 }
 
 struct DraggableAreaView: View {
