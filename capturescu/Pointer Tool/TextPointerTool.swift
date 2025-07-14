@@ -8,32 +8,62 @@
 import Combine
 import Foundation
 import SwiftUI
+import Observation
 
 @Observable class TextPointerTool: PointerTool {
   var toolName = PointerToolName.TextPointer
 
-  private var marker: TextMarker
   private var markerColor: MarkerColor
   private var showAccessoryView = false
   private var accessoryViewLocation: CGPoint = .zero
-  private var editingMarker: TextMarker? = nil
+  private var editingMarkerID: UUID? = nil
   private var editingIndex: Int? = nil
+  private var currentMarker: TextMarker? = nil  // Temporary marker during creation/editing
 
   init(color: MarkerColor) {
     self.markerColor = color
-    self.marker = TextMarker(markerColor: color)
   }
 
   func clearMarker() {
-    marker = TextMarker(markerColor: markerColor)
+    currentMarker = nil
+    editingMarkerID = nil
+    editingIndex = nil
+    showAccessoryView = false
   }
 
   func drawMarker(onto graphicsContext: GraphicsContext) {
-    marker.draw(onto: graphicsContext)
+    currentMarker?.draw(onto: graphicsContext)
   }
 
   func getMarker() -> Marker {
-    return marker
+    return currentMarker ?? TextMarker(markerColor: markerColor)
+  }
+  
+  // MARK: - Standard Lifecycle Implementation
+  
+  func beginMarker(at location: CGPoint) {
+    // If we're not already editing an existing marker, create a new one
+    if editingMarkerID == nil {
+      currentMarker = TextMarker(markerColor: markerColor)
+      editingIndex = nil
+    }
+    // For existing markers, currentMarker is already set in editExistingMarker
+    
+    showAccessoryView = true
+    accessoryViewLocation = location
+  }
+  
+  func updateMarker(at location: CGPoint) {
+    // Text markers don't have continuous updates like drawing tools
+    // Update the accessory view location if needed
+    if showAccessoryView {
+      accessoryViewLocation = location
+    }
+  }
+  
+  func endMarker(at location: CGPoint) {
+    // End marker creation - this happens when accessory view is dismissed
+    showAccessoryView = false
   }
 
   func renderAccessoryView(onDone: @escaping (_ maker: Marker) -> Void) -> AnyView {
@@ -41,34 +71,26 @@ import SwiftUI
       return AnyView(
         TextPointerToolAccessoryView(
           position: accessoryViewLocation,
-          initialText: editingMarker?.textValueRepresentation ?? "",
+          initialText: getCurrentEditingText(),
           onDone: { text, frame in
-            if let editingMarker = self.editingMarker {
+            if let editingID = self.editingMarkerID {
               // Update existing marker
-              var updatedMarker = editingMarker
-              updatedMarker.textValueRepresentation = text
-              updatedMarker.frameRepresentation = frame
-              self.marker = updatedMarker
+              var updatedMarker = TextMarker(markerColor: self.markerColor, textValue: text, frame: frame)
+              updatedMarker.id = editingID  // Keep the same ID
               self.showAccessoryView = false
-              onDone(self.getMarker())
-              self.editingMarker = nil
-              self.editingIndex = nil
+              onDone(updatedMarker)
+              self.clearMarker()
             } else {
               // Create new marker
-              self.marker = TextMarker(markerColor: self.markerColor, textValue: text, frame: frame)
+              let newMarker = TextMarker(markerColor: self.markerColor, textValue: text, frame: frame)
               self.showAccessoryView = false
-              onDone(self.getMarker())
-              // this type of marker doesn't have the usual lifecycle of `begin`, `update`, `end`
-              // so that after the accessory is `done`, we get rid of the current marker
-              // and initialize a new one(so we don't draw the current marker indefinately)
+              onDone(newMarker)
               self.clearMarker()
             }
           },
           onCancel: {
             // Cancel editing - just hide the accessory view without changes
-            self.showAccessoryView = false
-            self.editingMarker = nil
-            self.editingIndex = nil
+            self.clearMarker()
           }
         )
       )
@@ -77,7 +99,13 @@ import SwiftUI
   }
   
   func isEditingExistingMarker() -> Bool {
-    return editingMarker != nil
+    return editingMarkerID != nil
+  }
+  
+  private func getCurrentEditingText() -> String {
+    // For new markers, return empty string
+    // For existing markers, the text will be passed from the caller
+    return currentMarker?.textValueRepresentation ?? ""
   }
   
   func getEditingIndex() -> Int? {
@@ -85,16 +113,36 @@ import SwiftUI
   }
 
   func pointerClicked(at location: CGPoint) {
-    showAccessoryView = !showAccessoryView
-    accessoryViewLocation = showAccessoryView ? location : CGPoint.zero
-    editingMarker = nil
-    editingIndex = nil
+    // Use standard lifecycle for new text creation
+    if showAccessoryView {
+      // Hide accessory view if already showing
+      showAccessoryView = false
+      clearMarker()
+    } else {
+      // Show accessory view for new text creation
+      beginMarker(at: location)
+    }
   }
   
   func editExistingMarker(_ textMarker: TextMarker, at location: CGPoint, index: Int) {
-    editingMarker = textMarker
+    // Validate marker existence (defensive programming)
+    guard textMarker.id != UUID() else {
+      print("Warning: Attempting to edit marker with invalid ID")
+      return
+    }
+    
+    // Set up editing context first
+    editingMarkerID = textMarker.id
     editingIndex = index
-    showAccessoryView = true
-    accessoryViewLocation = textMarker.frameRepresentation.origin
+    currentMarker = textMarker  // Store for text retrieval
+    
+    // Use standard lifecycle for existing marker editing
+    beginMarker(at: textMarker.frameRepresentation.origin)
+  }
+  
+  func onUndoRedo() {
+    // Clear all editing state when undo/redo occurs
+    // This prevents stale references and state drift
+    clearMarker()
   }
 }

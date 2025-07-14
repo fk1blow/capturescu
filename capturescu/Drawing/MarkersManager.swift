@@ -30,6 +30,9 @@ class HistoryManager: ObservableObject {
     @Published var canUndo: Bool = false
     @Published var canRedo: Bool = false
     
+    // Callback to notify about undo/redo operations
+    var onUndoRedo: (() -> Void)?
+    
     static let shared = HistoryManager()
     
     private init() {}
@@ -66,6 +69,9 @@ class HistoryManager: ObservableObject {
         redoStack.append(command)
         
         updateCanUndoRedo()
+        
+        // Notify tools about undo operation
+        onUndoRedo?()
     }
     
     func redo() {
@@ -75,6 +81,9 @@ class HistoryManager: ObservableObject {
         undoStack.append(command)
         
         updateCanUndoRedo()
+        
+        // Notify tools about redo operation
+        onUndoRedo?()
     }
     
     func clear() {
@@ -112,6 +121,13 @@ class MarkersManager: ObservableObject {
     // Initialize interaction state manager
     func initializeInteractionStateManager() {
         interactionStateManager = InteractionStateManager(markersManager: self)
+    }
+    
+    // Set up undo/redo notification callback
+    func setupUndoRedoNotification(toolsManager: ToolsManager) {
+        HistoryManager.shared.onUndoRedo = { [weak toolsManager] in
+            toolsManager?.pointerTool.onUndoRedo()
+        }
     }
     
     // Computed properties for easy access to current markers
@@ -201,7 +217,7 @@ class MarkersManager: ObservableObject {
 
     // Simplified single method for marker movement
     func moveMarker(markerID: UUID, by delta: CGPoint) {
-        guard let markerIndex = markers.firstIndex(where: { $0.id == markerID }) else {
+        guard markers.firstIndex(where: { $0.id == markerID }) != nil else {
             return
         }
         

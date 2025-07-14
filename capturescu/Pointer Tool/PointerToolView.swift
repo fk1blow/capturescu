@@ -55,6 +55,18 @@ class ClickGestureHandler: ObservableObject {
     private func handleDoubleClick(at location: CGPoint, markersManager: MarkersManager, toolsManager: ToolsManager) {
         if let hoveredMarker = markersManager.hoveredMarker,
            let hoveredIndex = markersManager.hoveredMarkerIndex {
+            // Validate index bounds
+            guard hoveredIndex >= 0 && hoveredIndex < markersManager.markers.count else {
+                print("Warning: Invalid marker index for double-click")
+                return
+            }
+            
+            // Validate marker still exists at that index
+            guard markersManager.markers[hoveredIndex].id == hoveredMarker.id else {
+                print("Warning: Marker moved or deleted during double-click")
+                return
+            }
+            
             if hoveredMarker is TextMarker {
                 if let textTool = toolsManager.pointerTool as? TextPointerTool {
                     textTool.editExistingMarker(hoveredMarker as! TextMarker, at: location, index: hoveredIndex)
@@ -96,6 +108,12 @@ struct PointerToolView: View {
           if let textTool = toolsManager.pointerTool as? TextPointerTool,
              textTool.isEditingExistingMarker(),
              let index = textTool.getEditingIndex() {
+            // Validate index bounds before updating
+            guard index >= 0 && index < markersManager.markers.count else {
+              print("Warning: Invalid marker index for update")
+              return
+            }
+            
             // Update existing marker
             markersManager.updateMarker(at: index, with: marker)
           } else {

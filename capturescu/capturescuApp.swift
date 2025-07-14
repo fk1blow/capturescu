@@ -17,6 +17,9 @@ struct capturescuApp: App {
     init() {
         // Initialize the interaction state manager after markers manager is created
         markersManager.initializeInteractionStateManager()
+        
+        // Set up undo/redo notification for tools
+        markersManager.setupUndoRedoNotification(toolsManager: selectionManager)
     }
 
     var body: some Scene {

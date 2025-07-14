@@ -28,6 +28,9 @@ protocol PointerTool {
 
     func renderAccessoryView(onDone: @escaping (_ marker: Marker) -> Void) -> AnyView
     func pointerClicked(at location: CGPoint)
+    
+    // Called when undo/redo operations might affect the tool's state
+    func onUndoRedo()
 }
 
 extension PointerTool {
@@ -40,4 +43,6 @@ extension PointerTool {
     func beginMarker(at _: CGPoint) {}
     func updateMarker(at _: CGPoint) {}
     func endMarker(at _: CGPoint) {}
+    
+    func onUndoRedo() {}
 }
