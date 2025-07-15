@@ -23,6 +23,9 @@ import SwiftUI
         let startPosition: CGPoint
     }
     
+    // Store the original click position for new markers
+    private var currentClickPosition: CGPoint?
+    
     init(color: MarkerColor, markersManager: MarkersManager) {
         self.markerColor = color
         self.markersManager = markersManager
@@ -85,8 +88,11 @@ import SwiftUI
             }
         }
         
-        // Create new text marker
-        let accessoryView = createTextEditor(at: point)
+        // Create new text marker - store the click position and use geometry
+        currentClickPosition = point
+        let textGeometry = TextMarkerGeometry(renderBounds: CGRect(origin: point, size: CGSize(width: 120, height: 30)))
+        let editingPosition = textGeometry.getEditingPosition(for: point)
+        let accessoryView = createTextEditor(at: editingPosition)
         return ToolResponse(
             shouldContinue: true,
             accessoryView: accessoryView
@@ -101,8 +107,16 @@ import SwiftUI
             startPosition: point
         )
         
-        let initialText = (marker as? TextMarker)?.textValueRepresentation ?? ""
-        let accessoryView = createTextEditor(at: point, initialText: initialText)
+        guard let textMarker = marker as? TextMarker else {
+            // This should never happen - only text markers should be sent for editing
+            print("❌ ERROR: Non-text marker sent to handleEditMarker: \(marker)")
+            return .empty
+        }
+        
+        let initialText = textMarker.textValueRepresentation
+        let editingPosition = textMarker.getEditingPosition()
+        
+        let accessoryView = createTextEditor(at: editingPosition, initialText: initialText)
         
         return ToolResponse(
             shouldContinue: true,
@@ -140,20 +154,26 @@ import SwiftUI
     private func handleTextSubmitted(text: String, frame: CGRect) -> ToolResponse {
         guard let markersManager = markersManager else { return .empty }
         
-        // Adjust frame to align with text field position
-        let adjustedFrame = CGRect(
-            x: frame.origin.x + 8,
-            y: frame.origin.y - 21,
-            width: frame.width,
-            height: frame.height
-        )
-        
         if let editing = editingContext {
-            // Update existing marker
+            // Update existing marker - use the original position
+            let originalTextMarker = editing.originalMarker as! TextMarker
+            let originalPosition = originalTextMarker.frameRepresentation.origin
+            
+            // Calculate actual text size for updated marker
+            let font = NSFont.systemFont(ofSize: 14)
+            let attributes = [NSAttributedString.Key.font: font]
+            let attributedString = NSAttributedString(string: text, attributes: attributes)
+            let textBounds = attributedString.boundingRect(with: CGSize(width: 280, height: 280), options: [.usesLineFragmentOrigin, .usesFontLeading])
+            
+            let textGeometry = TextMarkerGeometry(renderBounds: CGRect(
+                origin: originalPosition,
+                size: CGSize(width: max(textBounds.width + 4, 20), height: max(textBounds.height + 4, 16))
+            ))
+            
             var updatedMarker = TextMarker(
                 markerColor: markerColor,
                 textValue: text,
-                frame: adjustedFrame
+                frame: textGeometry.renderBounds
             )
             updatedMarker.id = editing.originalMarker.id
             
@@ -170,12 +190,32 @@ import SwiftUI
                 commands: [command]
             )
         } else {
-            // Create new marker
+            // Create new marker - use the stored original click position
+            guard let originalClickPoint = currentClickPosition else {
+                print("❌ ERROR: No stored click position for new text marker")
+                return .empty
+            }
+            
+            
+            // Calculate actual text size instead of using text field frame
+            let font = NSFont.systemFont(ofSize: 14)
+            let attributes = [NSAttributedString.Key.font: font]
+            let attributedString = NSAttributedString(string: text, attributes: attributes)
+            let textBounds = attributedString.boundingRect(with: CGSize(width: 280, height: 280), options: [.usesLineFragmentOrigin, .usesFontLeading])
+            
+            let textGeometry = TextMarkerGeometry(renderBounds: CGRect(
+                origin: originalClickPoint,
+                size: CGSize(width: max(textBounds.width + 4, 20), height: max(textBounds.height + 4, 16))
+            ))
+            
             let newMarker = TextMarker(
                 markerColor: markerColor,
                 textValue: text,
-                frame: adjustedFrame
+                frame: textGeometry.renderBounds
             )
+            
+            // Clear the stored position
+            currentClickPosition = nil
             
             let command = AddMarkerCommand(
                 markersManager: markersManager,
@@ -191,6 +231,7 @@ import SwiftUI
     
     private func handleTextCancelled() -> ToolResponse {
         editingContext = nil
+        currentClickPosition = nil // Clear stored position on cancel
         return ToolResponse(
             shouldContinue: false,
             clearSelection: true
@@ -253,7 +294,8 @@ struct NewTextPointerToolAccessoryView: View {
                 RoundedRectangle(cornerRadius: 6)
                     .stroke(Color.blue, lineWidth: 2)
             )
-            .frame(minWidth: 120, maxWidth: 200)
+            .frame(minWidth: 120, maxWidth: 300, minHeight: 30, maxHeight: 300)
+            .fixedSize(horizontal: true, vertical: true)
             .background(GeometryReader { geometry in
                 Color.clear
                     .onAppear {
