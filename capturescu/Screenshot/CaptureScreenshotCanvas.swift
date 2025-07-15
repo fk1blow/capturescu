@@ -36,6 +36,8 @@ struct CaptureScreenshotCanvas: View {
                 // The "bounding box" represents a rectangle, smaller or having the same size as
                 // the drawing/annotation canvas, which includes ONLY the points(min,max x/y)
                 // drawn/annotated on the canvas, disregarding the canvas' original size
+                // 
+                // CRITICAL: Use exact pixel positioning to match bounding box calculation
                 let dx = x - capturedBounds.minX
                 let dy = y - capturedBounds.minY
 
@@ -53,9 +55,11 @@ struct CaptureScreenshotCanvas: View {
             }
 
             for var marker in capturedMarkers {
-                let dx = capturedBounds.minX
-                let dy = capturedBounds.minY
-                marker.offsetMarkerBy(dx: dx * -1, dy: dy * -1)
+                // Use the same offset calculation as the image to ensure perfect alignment
+                // Use exact coordinates to match bounding box calculation
+                let offsetX = capturedBounds.minX
+                let offsetY = capturedBounds.minY
+                marker.offsetMarkerBy(dx: offsetX * -1, dy: offsetY * -1)
                 marker.draw(onto: ctx)
             }
         }

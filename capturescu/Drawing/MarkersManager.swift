@@ -279,6 +279,10 @@ class MarkersManager: ObservableObject {
             switch representation {
             case let .path(path):
                 paths.append(path)
+            case let .text(textRep):
+                // Create a path from the text frame for bounding box calculation
+                let textPath = Path(textRep.frame)
+                paths.append(textPath)
             default:
                 break
             }

@@ -82,12 +82,18 @@ struct CaptureScreenshotBounds {
         }
         
         // No additional padding - preserve exact image bounds
-        let width = maxX - minX
-        let height = maxY - minY
+        // Floor min coordinates and ceil max coordinates to ensure all pixels are included
+        let roundedMinX = floor(minX)
+        let roundedMinY = floor(minY)
+        let roundedMaxX = ceil(maxX)
+        let roundedMaxY = ceil(maxY)
+        
+        let width = roundedMaxX - roundedMinX
+        let height = roundedMaxY - roundedMinY
         
         return CGRect(
-            x: minX,
-            y: minY,
+            x: roundedMinX,
+            y: roundedMinY,
             width: width,
             height: height
         )
