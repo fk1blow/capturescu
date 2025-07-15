@@ -66,7 +66,6 @@ struct ContentView: View, KeyboardCommandResponder {
     }
 
     func processCommand(_ command: KeyboardCommand) {
-        print("command received: \(command)")
 
         switch command {
         case .copy:
@@ -108,27 +107,16 @@ struct ContentView: View, KeyboardCommandResponder {
         if let image = NSPasteboard.getImage() {
             let imageSize = CGSize(width: image.width, height: image.height)
             
-            print("🖼️ IMAGE PASTE DEBUG:")
-            print("   Pasted image pixels: \(imageSize.width) x \(imageSize.height)")
             
             // DEBUG: Compare with what we had before (if any)
             if let previousImage = capturedImage {
-                print("   Previous image pixels: \(previousImage.image.width) x \(previousImage.image.height)")
-                print("   Previous image scale: \(previousImage.scale)")
-                print("   Previous display size: \(previousImage.displaySize)")
-                
-                let previousPixelSize = CGSize(width: previousImage.image.width, height: previousImage.image.height)
-                let sizeRatio = imageSize.width / previousPixelSize.width
-                print("   🚨 SIZE RATIO: \(sizeRatio) (should be 1.0 if no shrinking)")
             }
             
             // Calculate scale factor for the image
             let scale = windowSizeManager.calculateImageScale(for: imageSize)
-            print("   Calculated scale factor: \(scale)")
             
             // Calculate new window size based on scaled image
             let windowSize = windowSizeManager.calculateWindowSize(for: imageSize)
-            print("   Target window size: \(windowSize.width) x \(windowSize.height)")
             
             // Resize the window to fit the image
             windowSizeManager.resizeWindow(to: windowSize)
@@ -142,8 +130,6 @@ struct ContentView: View, KeyboardCommandResponder {
                     width: (imageSize.width / screenScale) * scale,
                     height: (imageSize.height / screenScale) * scale
                 )
-                print("   Screen scale: \(screenScale)")
-                print("   Scaled image size (points): \(scaledSize.width) x \(scaledSize.height)")
                 
                 // Calculate available space for image (excluding padding and toolbar)
                 let availableWidth = windowSize.width - LayoutConstants.totalHorizontalPadding
@@ -153,18 +139,14 @@ struct ContentView: View, KeyboardCommandResponder {
                 let x = LayoutConstants.imagePadding + (availableWidth - scaledSize.width) / 2
                 let y = LayoutConstants.imagePadding + (availableHeight - scaledSize.height) / 2
                 
-                print("   Available space: \(availableWidth) x \(availableHeight)")
-                print("   Image position with padding: (\(x), \(y))")
                 
                 capturedImage = CapturedPasteboardImage(
                     image: image,
                     position: CGPoint(x: x, y: y),
                     scale: scale
                 )
-                print("   Final displaySize: \(capturedImage!.displaySize.width) x \(capturedImage!.displaySize.height)")
             }
         } else {
-            print("No image found in pasteboard")
         }
     }
 
@@ -185,33 +167,9 @@ struct ContentView: View, KeyboardCommandResponder {
         // This ensures 1:1 pixel mapping for crisp image quality
         renderer.scale = 1.0
         
-        print("📋 COPY DEBUG:")
-        print("   Bounding box: \(markersBoundingBox.bounds)")
-        if let capturedImage = capturedImage {
-            print("   Original image pixels: \(capturedImage.image.width) x \(capturedImage.image.height)")
-            print("   Original image scale: \(capturedImage.scale)")
-            print("   Original display size: \(capturedImage.displaySize)")
-            
-            // What size SHOULD we render at?
-            let expectedWidth = CGFloat(capturedImage.image.width) * capturedImage.scale
-            let expectedHeight = CGFloat(capturedImage.image.height) * capturedImage.scale
-            print("   Expected render size: \(expectedWidth) x \(expectedHeight) pixels")
-        }
         
         let capture = renderer.cgImage
         if let capture = capture {
-            print("   🎯 ACTUAL rendered pixels: \(capture.width) x \(capture.height)")
-            print("   🎯 Bounding box points: \(markersBoundingBox.bounds.width) x \(markersBoundingBox.bounds.height)")
-            print("   🎯 Expected pixels at 2x: \(markersBoundingBox.bounds.width * 2) x \(markersBoundingBox.bounds.height * 2)")
-            
-            if let capturedImage = capturedImage {
-                let expectedWidth = CGFloat(capturedImage.image.width) * capturedImage.scale
-                let actualRatio = CGFloat(capture.width) / expectedWidth
-                print("   🚨 RENDER RATIO vs original image: \(actualRatio)")
-                
-                let boundingRatio = CGFloat(capture.width) / markersBoundingBox.bounds.width
-                print("   🎯 RENDER RATIO vs bounding box: \(boundingRatio) (should be 2.0 for 2x scale)")
-            }
         }
 
         NSPasteboard.addImage(capture: capture)

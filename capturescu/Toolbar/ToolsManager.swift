@@ -1,5 +1,5 @@
 //
-//  SelectionManager.swift
+//  ToolsManager.swift
 //  capturescu
 //
 //  Created by Dragos Tudorache
@@ -10,33 +10,34 @@ import SwiftUI
 
 class ToolsManager: ObservableObject {
     @Published var selectedColor: MarkerColor = .red
-    // @Published var pointerTool: any PointerTool = FreehandPointerTool(color: MarkerColor.red)
-    @Published var pointerTool: any PointerTool = TextPointerTool(color: MarkerColor.red)
-
+    @Published var currentTool: PointerToolName = .TextPointer
+    
     var selectedTextSize: Float = 12.0
     var selectedStrokeWidth: Float = 1
 
     func selectTool(named toolName: PointerToolName) {
-        switch toolName {
-        case .FreehandPointer:
-            pointerTool = FreehandPointerTool(color: selectedColor)
-        case .ArrowPointer:
-            pointerTool = ArrowPointerTool(color: selectedColor)
-        case .LinePointer:
-            pointerTool = LinePointerTool(color: selectedColor)
-        case .TextPointer:
-            pointerTool = TextPointerTool(color: selectedColor)
-        case .SelectionPointer:
-            // For selection tool, we create a dummy TextPointerTool but keep the toolName as SelectionPointer
-            // The actual selection logic is handled by the new EventManager system
-            pointerTool = SelectionPointerTool(color: selectedColor)
-        }
+        currentTool = toolName
     }
 
     func changeToolColor(with color: MarkerColor) {
         selectedColor = color
-        // when you want to change colors, it makes sense to swap
-        // a pencil(of a specific color) with another one(of a different color)
-        selectTool(named: pointerTool.toolName)
+    }
+}
+
+// MARK: - Legacy Compatibility
+// This extension provides compatibility with old code that expects pointerTool property
+extension ToolsManager {
+    // Dummy object to satisfy legacy code that accesses .toolName
+    var pointerTool: LegacyPointerToolCompat {
+        return LegacyPointerToolCompat(toolName: currentTool)
+    }
+}
+
+// Minimal compatibility object for legacy code
+struct LegacyPointerToolCompat {
+    let toolName: PointerToolName
+    
+    func onUndoRedo() {
+        // No-op for legacy compatibility
     }
 }

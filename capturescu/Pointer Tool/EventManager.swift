@@ -69,14 +69,12 @@ class EventManager: ObservableObject {
         
         // Special logging for double-click events only
         if case .doubleClick(let point) = event {
-            print("🔄 DOUBLE-CLICK EVENT at \(point) - routing to \(currentTool.toolName)")
         }
         
         let response = currentTool.handleEvent(event)
         
         // Log tool switch responses for double-click debugging
         if let toolSwitch = response.toolSwitch {
-            print("   Tool switch requested: \(toolSwitch)")
         }
         
         processResponse(response)

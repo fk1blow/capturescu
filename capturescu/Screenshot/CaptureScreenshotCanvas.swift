@@ -26,11 +26,6 @@ struct CaptureScreenshotCanvas: View {
                 let width = CGFloat(self.capturedImage!.image.width) * self.capturedImage!.scale
                 let height = CGFloat(self.capturedImage!.image.height) * self.capturedImage!.scale
                 
-                print("📸 SCREENSHOT CANVAS DEBUG:")
-                print("   Screen scale: \(screenScale)")
-                print("   Image pixels: \(self.capturedImage!.image.width) x \(self.capturedImage!.image.height)")
-                print("   Image scale: \(self.capturedImage!.scale)")
-                print("   Rendering at: \(width) x \(height)")
 
                 // Calculate the distance between the original canvas x,y and the annotation bounds x,y
                 // The "bounding box" represents a rectangle, smaller or having the same size as

@@ -109,7 +109,6 @@ import SwiftUI
         
         guard let textMarker = marker as? TextMarker else {
             // This should never happen - only text markers should be sent for editing
-            print("❌ ERROR: Non-text marker sent to handleEditMarker: \(marker)")
             return .empty
         }
         
@@ -192,7 +191,6 @@ import SwiftUI
         } else {
             // Create new marker - use the stored original click position
             guard let originalClickPoint = currentClickPosition else {
-                print("❌ ERROR: No stored click position for new text marker")
                 return .empty
             }
             

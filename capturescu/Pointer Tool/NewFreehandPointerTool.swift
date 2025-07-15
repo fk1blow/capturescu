@@ -27,10 +27,8 @@ import SwiftUI
         if case .hover = event { return .empty }
         if case .hoverEnd = event { return .empty }
         
-        print("🖍️ FreehandTool handling event: \(event)")
         switch event {
         case .dragStart(let point):
-            print("   Starting freehand drawing at: \(point)")
             beginDrawing(at: point)
             return .continue
             
@@ -39,37 +37,23 @@ import SwiftUI
             return .continue
             
         case .dragEnd(let point):
-            print("   Ending freehand drawing at: \(point)")
             return endDrawing(at: point)
             
         case .click(let point):
-            print("   Freehand click at: \(point)")
             // Handle single click as a small dot
             beginDrawing(at: point)
             return endDrawing(at: point)
             
         default:
-            print("   Freehand tool ignoring event")
             return .empty
         }
     }
     
     func renderPreview(context: GraphicsContext) {
         if let marker = currentMarker {
-            print("🖌️ FreehandTool rendering preview - path bounds: \(marker.path.boundingRect), isDrawing: \(isDrawing)")
             
-            // Debug: Draw a test circle at the current path end to verify rendering
-            if isDrawing {
-                let pathBounds = marker.path.boundingRect
-                if !pathBounds.isEmpty {
-                    let testCircle = Path(ellipseIn: CGRect(x: pathBounds.maxX - 3, y: pathBounds.maxY - 3, width: 6, height: 6))
-                    context.fill(testCircle, with: .color(.blue))
-                }
-            }
             
             marker.draw(onto: context)
-        } else {
-            print("🖌️ FreehandTool renderPreview - no current marker")
         }
     }
     
@@ -103,7 +87,6 @@ import SwiftUI
     
     private func updateDrawing(at point: CGPoint) {
         guard isDrawing, var marker = currentMarker else { 
-            print("🖍️ updateDrawing failed - isDrawing: \(isDrawing), currentMarker: \(currentMarker != nil)")
             return 
         }
         
@@ -113,11 +96,6 @@ import SwiftUI
         newPath.addLine(to: point)
         let pathBoundsAfter = newPath.boundingRect
         
-        print("🖍️ updateDrawing - point: \(point)")
-        print("   Path bounds before: \(pathBoundsBefore)")
-        print("   Path bounds after: \(pathBoundsAfter)")
-        print("   Path isEmpty before: \(pathBoundsBefore.isEmpty)")
-        print("   Path isEmpty after: \(pathBoundsAfter.isEmpty)")
         
         marker.path = newPath
         currentMarker = marker

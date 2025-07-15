@@ -33,9 +33,6 @@ struct TextMarkerGeometry {
     
     static func fromTextFieldFrame(_ textFieldFrame: CGRect, textContent: String) -> TextMarkerGeometry {
         // DEBUG: Let's see what coordinates we're actually working with
-        print("🔍 TextMarkerGeometry.fromTextFieldFrame DEBUG:")
-        print("   textFieldFrame: \(textFieldFrame)")
-        print("   textContent: '\(textContent)'")
         
         // PROBLEM: The text field frame isn't reliable because SwiftUI adjusts it
         // SOLUTION: Use the size from the text field, but get position from stored click point
@@ -59,7 +56,6 @@ struct TextMarkerGeometry {
             height: textFieldFrame.height - (textFieldPadding * 2)
         )
         
-        print("   → calculated textContentFrame: \(textContentFrame)")
         
         return TextMarkerGeometry(renderBounds: textContentFrame)
     }

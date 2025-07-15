@@ -29,7 +29,6 @@ import SwiftUI
             return handleClick(at: point)
             
         case .doubleClick(let point):
-            print("🔄 NewSelectionTool received .doubleClick event at \(point)")
             return handleDoubleClick(at: point)
             
         case .dragStart(let point):
@@ -97,15 +96,11 @@ import SwiftUI
     }
     
     private func handleDoubleClick(at point: CGPoint) -> ToolResponse {
-        print("🔄 NewSelectionTool.handleDoubleClick called at \(point)")
         
         if let editableMarker = markerFinder.findEditableMarkerAt(point) {
-            print("   Found editable marker: \(editableMarker.marker)")
-            print("   Can edit: \(editableMarker.canEdit)")
             
             if editableMarker.canEdit {
                 // Switch to text tool for editing on double-click
-                print("✅ Switching to text tool for editing")
                 return ToolResponse(
                     shouldContinue: true,
                     toolSwitch: .textTool,
@@ -113,7 +108,6 @@ import SwiftUI
                 )
             } else {
                 // Non-editable marker, just select it
-                print("   Non-editable marker, selecting for movement")
                 selectedMarkerIndex = editableMarker.index
                 selectedMarkerID = editableMarker.marker.id
                 
@@ -127,7 +121,6 @@ import SwiftUI
             }
         } else {
             // No marker at double-click location, clear selection
-            print("   No marker found at double-click location")
             selectedMarkerIndex = nil
             selectedMarkerID = nil
             

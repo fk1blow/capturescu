@@ -101,22 +101,16 @@ struct NewPointerToolView: View {
             let currentTime = Date()
             let timeDifference = currentTime.timeIntervalSince(lastClickTime)
             
-            print("🖱️ Click detected at \(location)")
-            print("   Time difference: \(timeDifference)s")
-            print("   Location difference: x=\(abs(location.x - lastClickLocation.x)), y=\(abs(location.y - lastClickLocation.y))")
-            print("   Current tool: \(toolsManager.pointerTool.toolName)")
             
             // Double-click detection (within 500ms and close to same location)
             if timeDifference < 0.5 && 
                abs(location.x - lastClickLocation.x) < 10 && 
                abs(location.y - lastClickLocation.y) < 10 {
                 // This is a double-click
-                print("✅ Double-click detected! Sending .doubleClick event")
                 eventManager.handleEvent(.doubleClick(location))
                 clickCount = 0 // Reset click count
             } else {
                 // Single click
-                print("✅ Single click detected! Sending .click event")
                 eventManager.handleEvent(.click(location))
                 clickCount = 1
             }

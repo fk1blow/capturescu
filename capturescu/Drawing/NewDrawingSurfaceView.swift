@@ -146,10 +146,8 @@ struct NewDrawingSurfaceView: View {
       
       // Check if this is a double-click
       if timeSinceLastClick <= doubleClickTimeWindow && distance <= doubleClickLocationTolerance {
-        print("🖱️ Double-click detected at \(location) in NewDrawingSurfaceView")
         eventManager.handleEvent(.doubleClick(location))
       } else {
-        print("🖱️ Click detected at \(location) in NewDrawingSurfaceView")
         eventManager.handleEvent(.click(location))
       }
       
