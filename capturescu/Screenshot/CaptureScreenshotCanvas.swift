@@ -42,7 +42,7 @@ struct CaptureScreenshotCanvas: View {
                 ctx.draw(
                     Image(
                         self.capturedImage!.image,
-                        scale: screenScale, // Use screen scale to convert pixels to points
+                        scale: screenScale, // Use screen scale to match display rendering
                         label: Text("")
                     ),
                     in: CGRect(

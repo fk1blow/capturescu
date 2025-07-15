@@ -105,7 +105,18 @@ struct ContentView: View, KeyboardCommandResponder {
             let imageSize = CGSize(width: image.width, height: image.height)
             
             print("🖼️ IMAGE PASTE DEBUG:")
-            print("   Original image size: \(imageSize.width) x \(imageSize.height)")
+            print("   Pasted image pixels: \(imageSize.width) x \(imageSize.height)")
+            
+            // DEBUG: Compare with what we had before (if any)
+            if let previousImage = capturedImage {
+                print("   Previous image pixels: \(previousImage.image.width) x \(previousImage.image.height)")
+                print("   Previous image scale: \(previousImage.scale)")
+                print("   Previous display size: \(previousImage.displaySize)")
+                
+                let previousPixelSize = CGSize(width: previousImage.image.width, height: previousImage.image.height)
+                let sizeRatio = imageSize.width / previousPixelSize.width
+                print("   🚨 SIZE RATIO: \(sizeRatio) (should be 1.0 if no shrinking)")
+            }
             
             // Calculate scale factor for the image
             let scale = windowSizeManager.calculateImageScale(for: imageSize)
@@ -158,13 +169,41 @@ struct ContentView: View, KeyboardCommandResponder {
             paths: markersManager.markersPaths(), capturedImage: capturedImage
         )
 
-        let capture = ImageRenderer(
+        let renderer = ImageRenderer(
             content: CaptureScreenshotCanvas(
                 capturedBounds: markersBoundingBox.bounds,
                 capturedImage: capturedImage,
                 capturedMarkers: markersManager.markers
             )
-        ).cgImage
+        )
+        
+        // Set the renderer scale to match screen scale for consistent sizing
+        // This ensures the Image(scale: screenScale) renders correctly
+        renderer.scale = NSScreen.main?.backingScaleFactor ?? 1.0
+        
+        print("📋 COPY DEBUG:")
+        print("   Bounding box: \(markersBoundingBox.bounds)")
+        if let capturedImage = capturedImage {
+            print("   Original image pixels: \(capturedImage.image.width) x \(capturedImage.image.height)")
+            print("   Original image scale: \(capturedImage.scale)")
+            print("   Original display size: \(capturedImage.displaySize)")
+            
+            // What size SHOULD we render at?
+            let expectedWidth = CGFloat(capturedImage.image.width) * capturedImage.scale
+            let expectedHeight = CGFloat(capturedImage.image.height) * capturedImage.scale
+            print("   Expected render size: \(expectedWidth) x \(expectedHeight) pixels")
+        }
+        
+        let capture = renderer.cgImage
+        if let capture = capture {
+            print("   🎯 ACTUAL rendered pixels: \(capture.width) x \(capture.height)")
+            
+            if let capturedImage = capturedImage {
+                let expectedWidth = CGFloat(capturedImage.image.width) * capturedImage.scale
+                let actualRatio = CGFloat(capture.width) / expectedWidth
+                print("   🚨 RENDER RATIO: \(actualRatio) (should be 1.0)")
+            }
+        }
 
         NSPasteboard.addImage(capture: capture)
     }

@@ -32,14 +32,18 @@ extension NSPasteboard {
         // Create a bitmap representation from the CGImage
         let bitmapRep = NSBitmapImageRep(cgImage: image)
 
-        // Convert the bitmap representation to PNG format
-        guard let pngData = bitmapRep.representation(using: .png, properties: [:]) else { return }
-
         // Create the pasteboard
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
 
-        // Write the PNG data to the pasteboard
-        pasteboard.setData(pngData, forType: .png)
+        // Add PNG format for broad compatibility
+        if let pngData = bitmapRep.representation(using: .png, properties: [:]) {
+            pasteboard.setData(pngData, forType: .png)
+        }
+        
+        // Add TIFF format for metadata preservation and professional app compatibility
+        if let tiffData = bitmapRep.representation(using: .tiff, properties: [:]) {
+            pasteboard.setData(tiffData, forType: .tiff)
+        }
     }
 }
