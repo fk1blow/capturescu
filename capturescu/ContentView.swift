@@ -15,10 +15,9 @@ struct CapturedPasteboardImage {
     
     // Computed property for display size in points
     var displaySize: CGSize {
-        let screenScale = NSScreen.main?.backingScaleFactor ?? 1.0
         return CGSize(
-            width: (CGFloat(image.width) / screenScale) * scale,
-            height: (CGFloat(image.height) / screenScale) * scale
+            width: CGFloat(image.width) * scale,
+            height: CGFloat(image.height) * scale
         )
     }
 }
@@ -177,9 +176,9 @@ struct ContentView: View, KeyboardCommandResponder {
             )
         )
         
-        // Set the renderer scale to match screen scale for consistent sizing
-        // This ensures the Image(scale: screenScale) renders correctly
-        renderer.scale = NSScreen.main?.backingScaleFactor ?? 1.0
+        // Set the renderer scale to 1.0 to match Image(scale: 1.0) for high quality output
+        // This ensures 1:1 pixel mapping for crisp image quality
+        renderer.scale = 1.0
         
         print("📋 COPY DEBUG:")
         print("   Bounding box: \(markersBoundingBox.bounds)")
@@ -197,11 +196,16 @@ struct ContentView: View, KeyboardCommandResponder {
         let capture = renderer.cgImage
         if let capture = capture {
             print("   🎯 ACTUAL rendered pixels: \(capture.width) x \(capture.height)")
+            print("   🎯 Bounding box points: \(markersBoundingBox.bounds.width) x \(markersBoundingBox.bounds.height)")
+            print("   🎯 Expected pixels at 2x: \(markersBoundingBox.bounds.width * 2) x \(markersBoundingBox.bounds.height * 2)")
             
             if let capturedImage = capturedImage {
                 let expectedWidth = CGFloat(capturedImage.image.width) * capturedImage.scale
                 let actualRatio = CGFloat(capture.width) / expectedWidth
-                print("   🚨 RENDER RATIO: \(actualRatio) (should be 1.0)")
+                print("   🚨 RENDER RATIO vs original image: \(actualRatio)")
+                
+                let boundingRatio = CGFloat(capture.width) / markersBoundingBox.bounds.width
+                print("   🎯 RENDER RATIO vs bounding box: \(boundingRatio) (should be 2.0 for 2x scale)")
             }
         }
 

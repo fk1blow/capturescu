@@ -81,15 +81,13 @@ struct CaptureScreenshotBounds {
             }
         }
         
-        // add an offset/padding to the bounds
-        let additionalPadding = 20.0
-        let additionalOffset = 10.0
-        let width = maxX - minX + additionalPadding
-        let height = maxY - minY + additionalPadding
+        // No additional padding - preserve exact image bounds
+        let width = maxX - minX
+        let height = maxY - minY
         
         return CGRect(
-            x: minX - additionalOffset,
-            y: minY - additionalOffset,
+            x: minX,
+            y: minY,
             width: width,
             height: height
         )

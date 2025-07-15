@@ -22,9 +22,9 @@ struct CaptureScreenshotCanvas: View {
                 // Get the screen scale to handle Retina displays properly (same as DrawingSurfaceView)
                 let screenScale = NSScreen.main?.backingScaleFactor ?? 1.0
                 
-                // Convert pixels to points by dividing by screen scale, then apply user scale
-                let width = (CGFloat(self.capturedImage!.image.width) / screenScale) * self.capturedImage!.scale
-                let height = (CGFloat(self.capturedImage!.image.height) / screenScale) * self.capturedImage!.scale
+                // Render at actual pixel size (1:1 mapping) with user scale applied
+                let width = CGFloat(self.capturedImage!.image.width) * self.capturedImage!.scale
+                let height = CGFloat(self.capturedImage!.image.height) * self.capturedImage!.scale
                 
                 print("📸 SCREENSHOT CANVAS DEBUG:")
                 print("   Screen scale: \(screenScale)")
@@ -42,7 +42,7 @@ struct CaptureScreenshotCanvas: View {
                 ctx.draw(
                     Image(
                         self.capturedImage!.image,
-                        scale: screenScale, // Use screen scale to match display rendering
+                        scale: 1.0, // Use 1.0 scale to match pixel-size rendering
                         label: Text("")
                     ),
                     in: CGRect(

@@ -23,9 +23,9 @@ struct DrawingSurfaceView: View {
                 // Get the screen scale to handle Retina displays properly
                 let screenScale = NSScreen.main?.backingScaleFactor ?? 1.0
                 
-                // Convert pixels to points by dividing by screen scale, then apply user scale
-                let width = (CGFloat(capturedImage!.image.width) / screenScale) * capturedImage!.scale
-                let height = (CGFloat(capturedImage!.image.height) / screenScale) * capturedImage!.scale
+                // Render at actual pixel size (1:1 mapping) with user scale applied
+                let width = CGFloat(capturedImage!.image.width) * capturedImage!.scale
+                let height = CGFloat(capturedImage!.image.height) * capturedImage!.scale
 
                 print("🎨 CANVAS RENDER DEBUG:")
                 print("   Canvas size: \(size.width) x \(size.height)")
