@@ -38,7 +38,8 @@ struct ContentView: View, KeyboardCommandResponder {
                 .background(Color.clear)
 
             ZStack(alignment: .center) {
-                DrawingSurfaceView(capturedImage: capturedImage)
+//                DrawingSurfaceView(capturedImage: capturedImage)
+                NewDrawingSurfaceView(capturedImage: capturedImage)
                     .background(GeometryGetter(rect: $drawingSurfaceBounds))
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .onAppear(perform: {

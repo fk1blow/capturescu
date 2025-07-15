@@ -50,6 +50,39 @@
 		2BAA6A512CA5D46800B08792 /* ToolbarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BAA6A502CA5D46800B08792 /* ToolbarView.swift */; };
 		2BBA38972CDA8D09004CC47A /* KeyboardManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BBA38962CDA8D09004CC47A /* KeyboardManager.swift */; };
 		2BBC9EAE2CB70B5F004B2616 /* WindowStyleModifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BBC9EAD2CB70B5F004B2616 /* WindowStyleModifier.swift */; };
+		2BC306EC2E2657DD001D2739 /* NewPointerToolView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BC306E72E2657DD001D2739 /* NewPointerToolView.swift */; };
+		2BC306ED2E2657DD001D2739 /* NewTextPointerTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BC306E92E2657DD001D2739 /* NewTextPointerTool.swift */; };
+		2BC306EE2E2657DD001D2739 /* EventManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BC306E22E2657DD001D2739 /* EventManager.swift */; };
+		2BC306EF2E2657DD001D2739 /* NewArrowPointerTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BC306E32E2657DD001D2739 /* NewArrowPointerTool.swift */; };
+		2BC306F02E2657DD001D2739 /* NewFreehandPointerTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BC306E42E2657DD001D2739 /* NewFreehandPointerTool.swift */; };
+		2BC306F12E2657DD001D2739 /* NewPointerTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BC306E62E2657DD001D2739 /* NewPointerTool.swift */; };
+		2BC306F22E2657DD001D2739 /* NewSelectionTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BC306E82E2657DD001D2739 /* NewSelectionTool.swift */; };
+		2BC306F32E2657DD001D2739 /* PointerEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BC306EA2E2657DD001D2739 /* PointerEvent.swift */; };
+		2BC306F42E2657DD001D2739 /* PointerToolCompat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BC306EB2E2657DD001D2739 /* PointerToolCompat.swift */; };
+		2BC306F52E2657DD001D2739 /* NewLinePointerTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BC306E52E2657DD001D2739 /* NewLinePointerTool.swift */; };
+		2BC306F62E2657DD001D2739 /* NewPointerToolView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BC306E72E2657DD001D2739 /* NewPointerToolView.swift */; };
+		2BC306F72E2657DD001D2739 /* NewTextPointerTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BC306E92E2657DD001D2739 /* NewTextPointerTool.swift */; };
+		2BC306F82E2657DD001D2739 /* EventManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BC306E22E2657DD001D2739 /* EventManager.swift */; };
+		2BC306F92E2657DD001D2739 /* NewArrowPointerTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BC306E32E2657DD001D2739 /* NewArrowPointerTool.swift */; };
+		2BC306FA2E2657DD001D2739 /* NewFreehandPointerTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BC306E42E2657DD001D2739 /* NewFreehandPointerTool.swift */; };
+		2BC306FB2E2657DD001D2739 /* NewPointerTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BC306E62E2657DD001D2739 /* NewPointerTool.swift */; };
+		2BC306FC2E2657DD001D2739 /* NewSelectionTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BC306E82E2657DD001D2739 /* NewSelectionTool.swift */; };
+		2BC306FD2E2657DD001D2739 /* PointerEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BC306EA2E2657DD001D2739 /* PointerEvent.swift */; };
+		2BC306FE2E2657DD001D2739 /* PointerToolCompat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BC306EB2E2657DD001D2739 /* PointerToolCompat.swift */; };
+		2BC306FF2E2657DD001D2739 /* NewLinePointerTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BC306E52E2657DD001D2739 /* NewLinePointerTool.swift */; };
+		2BC307002E2657DD001D2739 /* NewPointerToolView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BC306E72E2657DD001D2739 /* NewPointerToolView.swift */; };
+		2BC307012E2657DD001D2739 /* NewTextPointerTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BC306E92E2657DD001D2739 /* NewTextPointerTool.swift */; };
+		2BC307022E2657DD001D2739 /* EventManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BC306E22E2657DD001D2739 /* EventManager.swift */; };
+		2BC307032E2657DD001D2739 /* NewArrowPointerTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BC306E32E2657DD001D2739 /* NewArrowPointerTool.swift */; };
+		2BC307042E2657DD001D2739 /* NewFreehandPointerTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BC306E42E2657DD001D2739 /* NewFreehandPointerTool.swift */; };
+		2BC307052E2657DD001D2739 /* NewPointerTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BC306E62E2657DD001D2739 /* NewPointerTool.swift */; };
+		2BC307062E2657DD001D2739 /* NewSelectionTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BC306E82E2657DD001D2739 /* NewSelectionTool.swift */; };
+		2BC307072E2657DD001D2739 /* PointerEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BC306EA2E2657DD001D2739 /* PointerEvent.swift */; };
+		2BC307082E2657DD001D2739 /* PointerToolCompat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BC306EB2E2657DD001D2739 /* PointerToolCompat.swift */; };
+		2BC307092E2657DD001D2739 /* NewLinePointerTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BC306E52E2657DD001D2739 /* NewLinePointerTool.swift */; };
+		2BC3070B2E2657EB001D2739 /* NewDrawingSurfaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BC3070A2E2657EB001D2739 /* NewDrawingSurfaceView.swift */; };
+		2BC3070C2E2657EB001D2739 /* NewDrawingSurfaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BC3070A2E2657EB001D2739 /* NewDrawingSurfaceView.swift */; };
+		2BC3070D2E2657EB001D2739 /* NewDrawingSurfaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BC3070A2E2657EB001D2739 /* NewDrawingSurfaceView.swift */; };
 		2BD1E27F2CA52BE20018B6EC /* AnnotationCanvas.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BD1E27E2CA52BE20018B6EC /* AnnotationCanvas.swift */; };
 		2BD1E2812CA5300B0018B6EC /* FreehandAnnotationTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BD1E2802CA5300B0018B6EC /* FreehandAnnotationTool.swift */; };
 		2BD1E2832CA53EBC0018B6EC /* LineAnnotationTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BD1E2822CA53EBC0018B6EC /* LineAnnotationTool.swift */; };
@@ -121,6 +154,17 @@
 		2BAA6A502CA5D46800B08792 /* ToolbarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolbarView.swift; sourceTree = "<group>"; };
 		2BBA38962CDA8D09004CC47A /* KeyboardManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardManager.swift; sourceTree = "<group>"; };
 		2BBC9EAD2CB70B5F004B2616 /* WindowStyleModifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowStyleModifier.swift; sourceTree = "<group>"; };
+		2BC306E22E2657DD001D2739 /* EventManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventManager.swift; sourceTree = "<group>"; };
+		2BC306E32E2657DD001D2739 /* NewArrowPointerTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewArrowPointerTool.swift; sourceTree = "<group>"; };
+		2BC306E42E2657DD001D2739 /* NewFreehandPointerTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewFreehandPointerTool.swift; sourceTree = "<group>"; };
+		2BC306E52E2657DD001D2739 /* NewLinePointerTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewLinePointerTool.swift; sourceTree = "<group>"; };
+		2BC306E62E2657DD001D2739 /* NewPointerTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewPointerTool.swift; sourceTree = "<group>"; };
+		2BC306E72E2657DD001D2739 /* NewPointerToolView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewPointerToolView.swift; sourceTree = "<group>"; };
+		2BC306E82E2657DD001D2739 /* NewSelectionTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewSelectionTool.swift; sourceTree = "<group>"; };
+		2BC306E92E2657DD001D2739 /* NewTextPointerTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewTextPointerTool.swift; sourceTree = "<group>"; };
+		2BC306EA2E2657DD001D2739 /* PointerEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PointerEvent.swift; sourceTree = "<group>"; };
+		2BC306EB2E2657DD001D2739 /* PointerToolCompat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PointerToolCompat.swift; sourceTree = "<group>"; };
+		2BC3070A2E2657EB001D2739 /* NewDrawingSurfaceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewDrawingSurfaceView.swift; sourceTree = "<group>"; };
 		2BD1E27E2CA52BE20018B6EC /* AnnotationCanvas.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnnotationCanvas.swift; sourceTree = "<group>"; };
 		2BD1E2802CA5300B0018B6EC /* FreehandAnnotationTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FreehandAnnotationTool.swift; sourceTree = "<group>"; };
 		2BD1E2822CA53EBC0018B6EC /* LineAnnotationTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LineAnnotationTool.swift; sourceTree = "<group>"; };
@@ -163,6 +207,7 @@
 		2B1C58AB2CB5D8D000EF826D /* Drawing */ = {
 			isa = PBXGroup;
 			children = (
+				2BC3070A2E2657EB001D2739 /* NewDrawingSurfaceView.swift */,
 				2B1C58A72CB5C66900EF826D /* DrawingSurfaceView.swift */,
 				2B0D4A9F2CBBC89800647C79 /* MarkersManager.swift */,
 				2B1C58AC2CB5D90900EF826D /* Marker.swift */,
@@ -193,6 +238,16 @@
 		2B1CF0B12CB84FD400680F38 /* Pointer Tool */ = {
 			isa = PBXGroup;
 			children = (
+				2BC306E22E2657DD001D2739 /* EventManager.swift */,
+				2BC306E32E2657DD001D2739 /* NewArrowPointerTool.swift */,
+				2BC306E42E2657DD001D2739 /* NewFreehandPointerTool.swift */,
+				2BC306E52E2657DD001D2739 /* NewLinePointerTool.swift */,
+				2BC306E62E2657DD001D2739 /* NewPointerTool.swift */,
+				2BC306E72E2657DD001D2739 /* NewPointerToolView.swift */,
+				2BC306E82E2657DD001D2739 /* NewSelectionTool.swift */,
+				2BC306E92E2657DD001D2739 /* NewTextPointerTool.swift */,
+				2BC306EA2E2657DD001D2739 /* PointerEvent.swift */,
+				2BC306EB2E2657DD001D2739 /* PointerToolCompat.swift */,
 				2B00C2642D18464B0001B914 /* Accesories */,
 				2B1C58A92CB5C7D200EF826D /* PointerToolView.swift */,
 				2BFDC6A72CB5F2AF00F3A5FE /* PointerTool.swift */,
@@ -481,11 +536,22 @@
 				2B0B088C2C9EC18A00FA6C98 /* KeyPressView.swift in Sources */,
 				2B1CF0AD2CB838AD00680F38 /* LinePointerTool.swift in Sources */,
 				2BD1E2882CA540FC0018B6EC /* AnnotationTool.swift in Sources */,
+				2BC3070D2E2657EB001D2739 /* NewDrawingSurfaceView.swift in Sources */,
 				2B60BFD72CC4A8D00011E38B /* Color+Inverse.swift in Sources */,
 				2B1C58AD2CB5D90900EF826D /* Marker.swift in Sources */,
 				2BBA38972CDA8D09004CC47A /* KeyboardManager.swift in Sources */,
 				2B9145B52BFA2B7D00CA8097 /* ContentView.swift in Sources */,
 				2B9145B32BFA2B7D00CA8097 /* capturescuApp.swift in Sources */,
+				2BC307002E2657DD001D2739 /* NewPointerToolView.swift in Sources */,
+				2BC307012E2657DD001D2739 /* NewTextPointerTool.swift in Sources */,
+				2BC307022E2657DD001D2739 /* EventManager.swift in Sources */,
+				2BC307032E2657DD001D2739 /* NewArrowPointerTool.swift in Sources */,
+				2BC307042E2657DD001D2739 /* NewFreehandPointerTool.swift in Sources */,
+				2BC307052E2657DD001D2739 /* NewPointerTool.swift in Sources */,
+				2BC307062E2657DD001D2739 /* NewSelectionTool.swift in Sources */,
+				2BC307072E2657DD001D2739 /* PointerEvent.swift in Sources */,
+				2BC307082E2657DD001D2739 /* PointerToolCompat.swift in Sources */,
+				2BC307092E2657DD001D2739 /* NewLinePointerTool.swift in Sources */,
 				2B1CF0B32CB8501A00680F38 /* DrawingMarker.swift in Sources */,
 				2BD1E2852CA540340018B6EC /* ArrowAnnotationTool.swift in Sources */,
 				2B1CF0B52CB8504E00680F38 /* ImageMarker.swift in Sources */,
@@ -512,7 +578,18 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2BC3070C2E2657EB001D2739 /* NewDrawingSurfaceView.swift in Sources */,
 				2B9145C52BFA2B7E00CA8097 /* capturescuTests.swift in Sources */,
+				2BC306F62E2657DD001D2739 /* NewPointerToolView.swift in Sources */,
+				2BC306F72E2657DD001D2739 /* NewTextPointerTool.swift in Sources */,
+				2BC306F82E2657DD001D2739 /* EventManager.swift in Sources */,
+				2BC306F92E2657DD001D2739 /* NewArrowPointerTool.swift in Sources */,
+				2BC306FA2E2657DD001D2739 /* NewFreehandPointerTool.swift in Sources */,
+				2BC306FB2E2657DD001D2739 /* NewPointerTool.swift in Sources */,
+				2BC306FC2E2657DD001D2739 /* NewSelectionTool.swift in Sources */,
+				2BC306FD2E2657DD001D2739 /* PointerEvent.swift in Sources */,
+				2BC306FE2E2657DD001D2739 /* PointerToolCompat.swift in Sources */,
+				2BC306FF2E2657DD001D2739 /* NewLinePointerTool.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -520,7 +597,18 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2BC3070B2E2657EB001D2739 /* NewDrawingSurfaceView.swift in Sources */,
 				2B9145CF2BFA2B7E00CA8097 /* capturescuUITests.swift in Sources */,
+				2BC306EC2E2657DD001D2739 /* NewPointerToolView.swift in Sources */,
+				2BC306ED2E2657DD001D2739 /* NewTextPointerTool.swift in Sources */,
+				2BC306EE2E2657DD001D2739 /* EventManager.swift in Sources */,
+				2BC306EF2E2657DD001D2739 /* NewArrowPointerTool.swift in Sources */,
+				2BC306F02E2657DD001D2739 /* NewFreehandPointerTool.swift in Sources */,
+				2BC306F12E2657DD001D2739 /* NewPointerTool.swift in Sources */,
+				2BC306F22E2657DD001D2739 /* NewSelectionTool.swift in Sources */,
+				2BC306F32E2657DD001D2739 /* PointerEvent.swift in Sources */,
+				2BC306F42E2657DD001D2739 /* PointerToolCompat.swift in Sources */,
+				2BC306F52E2657DD001D2739 /* NewLinePointerTool.swift in Sources */,
 				2B9145D12BFA2B7E00CA8097 /* capturescuUITestsLaunchTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

@@ -10,8 +10,8 @@ I can copy/paste an image, add freehand drawing, arrows, shapes, text, and also 
 
 ## Todo
 
+- ✅ ~~improve the pointer tools~~ (Completed: Event-driven architecture with Canvas synchronization)
 - improve the keyboard shortcut manager
-- improve the pointer tools
 - add editing to the text marker
 - reimplement copy/paste with the help of the new shortcut manager
 

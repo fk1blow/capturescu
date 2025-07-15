@@ -303,7 +303,11 @@ class AddMarkerCommand: MarkerCommand {
     }
     
     func execute() {
+        print("📝 AddMarkerCommand executing - adding marker to list")
+        print("   Current markers count: \(markersManager.markers.count)")
         markersManager.markers.append(marker)
+        print("   New markers count: \(markersManager.markers.count)")
+        print("   Added marker: \(marker)")
     }
     
     func undo() {

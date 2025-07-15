@@ -26,15 +26,6 @@ struct DrawingSurfaceView: View {
                 // Render at actual pixel size (1:1 mapping) with user scale applied
                 let width = CGFloat(capturedImage!.image.width) * capturedImage!.scale
                 let height = CGFloat(capturedImage!.image.height) * capturedImage!.scale
-
-                print("🎨 CANVAS RENDER DEBUG:")
-                print("   Canvas size: \(size.width) x \(size.height)")
-                print("   Screen scale: \(screenScale)")
-                print("   Image original pixels: \(capturedImage!.image.width) x \(capturedImage!.image.height)")
-                print("   Image original points: \(CGFloat(capturedImage!.image.width) / screenScale) x \(CGFloat(capturedImage!.image.height) / screenScale)")
-                print("   Image user scale: \(capturedImage!.scale)")
-                print("   Rendering at: \(width) x \(height)")
-                print("   Position: (\(x), \(y))")
                 
                 ctx.draw(
                     Image(

@@ -27,10 +27,22 @@ struct DrawingMarker: Marker {
     }
 
     func draw(onto graphicsContext: GraphicsContext) {
-        graphicsContext.stroke(path, with: .color(style.strokeColor.color), lineWidth: style.strokeWidth)
-
-        if style.fillColor != nil {
-            graphicsContext.fill(path, with: .color(style.fillColor!.color))
+        print("🎨 DrawingMarker.draw() called - path bounds: \(path.boundingRect), color: \(style.strokeColor), lineWidth: \(style.strokeWidth)")
+        
+        // Ensure we have a valid path before drawing
+        if !path.boundingRect.isEmpty {
+            print("   About to stroke path with bounds: \(path.boundingRect)")
+            print("   Path description: \(path.description)")
+            
+            graphicsContext.stroke(path, with: .color(style.strokeColor.color), lineWidth: style.strokeWidth)
+            
+            if style.fillColor != nil {
+                graphicsContext.fill(path, with: .color(style.fillColor!.color))
+            }
+            
+            print("   Path stroke completed")
+        } else {
+            print("   Skipping draw - empty path bounds")
         }
 
         drawHighlight(onto: graphicsContext)
