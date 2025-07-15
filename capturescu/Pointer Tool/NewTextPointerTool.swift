@@ -121,12 +121,20 @@ import SwiftUI
     private func handleTextSubmitted(text: String, frame: CGRect) -> ToolResponse {
         guard let markersManager = markersManager else { return .empty }
         
+        // Adjust frame to align with text field position
+        let adjustedFrame = CGRect(
+            x: frame.origin.x + 8,
+            y: frame.origin.y - 21,
+            width: frame.width,
+            height: frame.height
+        )
+        
         if let editing = editingContext {
             // Update existing marker
             var updatedMarker = TextMarker(
                 markerColor: markerColor,
                 textValue: text,
-                frame: frame
+                frame: adjustedFrame
             )
             updatedMarker.id = editing.originalMarker.id
             
@@ -147,7 +155,7 @@ import SwiftUI
             let newMarker = TextMarker(
                 markerColor: markerColor,
                 textValue: text,
-                frame: frame
+                frame: adjustedFrame
             )
             
             let command = AddMarkerCommand(
@@ -217,44 +225,47 @@ struct NewTextPointerToolAccessoryView: View {
     }
     
     var body: some View {
-        VStack {
-            TextField("Enter text", text: $text)
-                .focused($isTextFieldFocused)
-                .textFieldStyle(RoundedBorderTextFieldStyle())
-                .frame(minWidth: 200)
-                .background(GeometryReader { geometry in
-                    Color.clear
-                        .onAppear {
-                            textFrame = geometry.frame(in: .global)
-                        }
-                        .onChange(of: geometry.frame(in: .global)) { newFrame in
-                            textFrame = newFrame
-                        }
-                })
-                .onSubmit {
-                    submitText()
-                }
-            
-            HStack {
-                Button("Cancel") {
+        TextField("Enter text", text: $text, axis: .vertical)
+            .focused($isTextFieldFocused)
+            .textFieldStyle(.plain)
+            .padding(8)
+            .background(Color.clear)
+            .overlay(
+                RoundedRectangle(cornerRadius: 6)
+                    .stroke(Color.blue, lineWidth: 2)
+            )
+            .frame(minWidth: 120, maxWidth: 200)
+            .background(GeometryReader { geometry in
+                Color.clear
+                    .onAppear {
+                        textFrame = geometry.frame(in: .global)
+                    }
+                    .onChange(of: geometry.frame(in: .global)) { newFrame in
+                        textFrame = newFrame
+                    }
+            })
+            .onKeyPress { keyPress in
+                if keyPress.key == .return {
+                    if keyPress.modifiers.contains(.shift) {
+                        // Shift+Enter: insert newline
+                        text += "\n"
+                        return .handled
+                    } else {
+                        // Enter: submit text
+                        submitText()
+                        return .handled
+                    }
+                } else if keyPress.key == .escape {
+                    // Escape: cancel
                     onCancelled()
+                    return .handled
                 }
-                .keyboardShortcut(.escape, modifiers: [])
-                
-                Button("Done") {
-                    submitText()
-                }
-                .keyboardShortcut(.return, modifiers: [])
+                return .ignored
             }
-        }
-        .padding()
-        .background(Color.white)
-        .cornerRadius(8)
-        .shadow(radius: 4)
-        .position(x: position.x, y: position.y)
-        .onAppear {
-            isTextFieldFocused = true
-        }
+            .offset(x: position.x, y: position.y)
+            .onAppear {
+                isTextFieldFocused = true
+            }
     }
     
     private func submitText() {
