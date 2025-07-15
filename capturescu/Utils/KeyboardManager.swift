@@ -10,6 +10,7 @@ enum KeyboardCommand {
     case selectFreehandTool
     case selectLineTool
     case selectTextTool
+    case selectSelectionTool
     // Marker operations
     case deleteMarker
     // Undo/Redo

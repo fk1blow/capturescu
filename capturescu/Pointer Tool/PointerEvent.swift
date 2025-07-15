@@ -12,6 +12,7 @@ import SwiftUI
 enum PointerEvent {
     // Basic interaction events
     case click(CGPoint)
+    case doubleClick(CGPoint)
     case dragStart(CGPoint)
     case dragUpdate(CGPoint)
     case dragEnd(CGPoint)

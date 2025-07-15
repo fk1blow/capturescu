@@ -38,7 +38,7 @@ extension NewPointerTool {
 
 /// Helper for finding markers at points
 struct MarkerFinder {
-    private let markersManager: MarkersManager
+    let markersManager: MarkersManager
     
     init(markersManager: MarkersManager) {
         self.markersManager = markersManager

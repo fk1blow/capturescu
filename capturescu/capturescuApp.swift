@@ -13,10 +13,17 @@ struct capturescuApp: App {
     private let markersManager = MarkersManager()
     private let keyboardManager = KeyboardManager.shared
     private let historyManager = HistoryManager.shared
+    private let eventManager: EventManager
     
     init() {
         // Set up undo/redo notification for tools
         markersManager.setupUndoRedoNotification(toolsManager: selectionManager)
+        
+        // Create EventManager with the shared instances
+        eventManager = EventManager(
+            markersManager: markersManager,
+            toolsManager: selectionManager
+        )
     }
 
     var body: some Scene {
@@ -28,6 +35,7 @@ struct capturescuApp: App {
                     .environmentObject(selectionManager)
                     .environmentObject(markersManager)
                     .environmentObject(historyManager)
+                    .environmentObject(eventManager)
                     .customWindowStyle()
             }
         }
@@ -76,6 +84,11 @@ struct capturescuApp: App {
                     keyboardManager.trigger(command: .selectTextTool)
                 }
                 .keyboardShortcut("t", modifiers: [])
+                
+                Button("Selection Tool") {
+                    keyboardManager.trigger(command: .selectSelectionTool)
+                }
+                .keyboardShortcut("s", modifiers: [])
             }
             
             CommandGroup(after: .textEditing) {

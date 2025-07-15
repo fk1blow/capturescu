@@ -9,21 +9,28 @@ import Foundation
 import SwiftUI
 
 @Observable class NewSelectionTool: NewPointerTool {
-    let toolName = PointerToolName.TextPointer // No dedicated selection tool in enum yet
+    let toolName = PointerToolName.SelectionPointer
     
     private let markerFinder: MarkerFinder
     var isDragging = false
     var dragStartPoint: CGPoint = .zero
     var selectedMarkerIndex: Int?
+    var selectedMarkerID: UUID?
+    private weak var markersManager: MarkersManager?
     
     init(markerFinder: MarkerFinder) {
         self.markerFinder = markerFinder
+        self.markersManager = markerFinder.markersManager
     }
     
     func handleEvent(_ event: PointerEvent) -> ToolResponse {
         switch event {
         case .click(let point):
             return handleClick(at: point)
+            
+        case .doubleClick(let point):
+            print("🔄 NewSelectionTool received .doubleClick event at \(point)")
+            return handleDoubleClick(at: point)
             
         case .dragStart(let point):
             return handleDragStart(at: point)
@@ -52,30 +59,81 @@ import SwiftUI
         isDragging = false
         dragStartPoint = .zero
         selectedMarkerIndex = nil
+        selectedMarkerID = nil
+        
+        // Clear highlighting when resetting
+        markersManager?.clearSelection()
     }
     
     // MARK: - Event Handlers
     
     private func handleClick(at point: CGPoint) -> ToolResponse {
         if let editableMarker = markerFinder.findEditableMarkerAt(point) {
+            // In selection mode, always select markers for movement, don't auto-edit
+            selectedMarkerIndex = editableMarker.index
+            selectedMarkerID = editableMarker.marker.id
+            
+            // Update highlighting through MarkersManager
+            markersManager?.selectMarker(at: point)
+            
+            return ToolResponse(
+                shouldContinue: true,
+                cursorUpdate: .move
+            )
+        } else {
+            // Clear selection
+            selectedMarkerIndex = nil
+            selectedMarkerID = nil
+            
+            // Clear highlighting through MarkersManager
+            markersManager?.clearSelection()
+            
+            return ToolResponse(
+                shouldContinue: true,
+                cursorUpdate: .default,
+                clearSelection: true
+            )
+        }
+    }
+    
+    private func handleDoubleClick(at point: CGPoint) -> ToolResponse {
+        print("🔄 NewSelectionTool.handleDoubleClick called at \(point)")
+        
+        if let editableMarker = markerFinder.findEditableMarkerAt(point) {
+            print("   Found editable marker: \(editableMarker.marker)")
+            print("   Can edit: \(editableMarker.canEdit)")
+            
             if editableMarker.canEdit {
-                // Switch to text tool for editing
+                // Switch to text tool for editing on double-click
+                print("✅ Switching to text tool for editing")
                 return ToolResponse(
                     shouldContinue: true,
                     toolSwitch: .textTool,
                     editMarker: (editableMarker.marker, editableMarker.index)
                 )
             } else {
-                // Select marker for movement
+                // Non-editable marker, just select it
+                print("   Non-editable marker, selecting for movement")
                 selectedMarkerIndex = editableMarker.index
+                selectedMarkerID = editableMarker.marker.id
+                
+                // Update highlighting through MarkersManager
+                markersManager?.selectMarker(at: point)
+                
                 return ToolResponse(
                     shouldContinue: true,
                     cursorUpdate: .move
                 )
             }
         } else {
-            // Clear selection
+            // No marker at double-click location, clear selection
+            print("   No marker found at double-click location")
             selectedMarkerIndex = nil
+            selectedMarkerID = nil
+            
+            // Clear highlighting through MarkersManager
+            markersManager?.clearSelection()
+            
             return ToolResponse(
                 shouldContinue: true,
                 cursorUpdate: .default,
@@ -87,8 +145,13 @@ import SwiftUI
     private func handleDragStart(at point: CGPoint) -> ToolResponse {
         if let editableMarker = markerFinder.findEditableMarkerAt(point) {
             selectedMarkerIndex = editableMarker.index
+            selectedMarkerID = editableMarker.marker.id
             isDragging = true
             dragStartPoint = point
+            
+            // Update highlighting through MarkersManager
+            markersManager?.selectMarker(at: point)
+            
             return ToolResponse(
                 shouldContinue: true,
                 cursorUpdate: .move
@@ -98,46 +161,40 @@ import SwiftUI
     }
     
     private func handleDragUpdate(at point: CGPoint) -> ToolResponse {
-        guard isDragging, let _ = selectedMarkerIndex else { return .empty }
+        guard isDragging, let markerID = selectedMarkerID, let markersManager = markersManager else { return .empty }
         
         // Calculate movement delta
-        let _ = point.x - dragStartPoint.x
-        let _ = point.y - dragStartPoint.y
+        let deltaX = point.x - dragStartPoint.x
+        let deltaY = point.y - dragStartPoint.y
         
         // Update drag start point for next update
         dragStartPoint = point
         
-        // Return movement command
-        // Note: This will need to be handled by EventManager to create proper move commands
+        // Create move command for this update
+        let moveCommand = MoveMarkerCommand(
+            markersManager: markersManager,
+            markerID: markerID,
+            deltaX: deltaX,
+            deltaY: deltaY
+        )
+        
         return ToolResponse(
             shouldContinue: true,
+            commands: [moveCommand],
             cursorUpdate: .move
         )
     }
     
     private func handleDragEnd(at point: CGPoint) -> ToolResponse {
-        guard isDragging, let _ = selectedMarkerIndex else { return .empty }
-        
-        // Calculate total movement
-        let totalDeltaX = point.x - dragStartPoint.x
-        let totalDeltaY = point.y - dragStartPoint.y
+        guard isDragging else { return .empty }
         
         // Reset drag state
         isDragging = false
         dragStartPoint = .zero
         
-        // Create move command if there was actual movement
-        if abs(totalDeltaX) > 1 || abs(totalDeltaY) > 1 {
-            // This would need to be handled by EventManager
-            // For now, return empty - will be improved in integration
-            return ToolResponse(
-                shouldContinue: false,
-                cursorUpdate: .pointer
-            )
-        }
-        
+        // Keep the marker selected after drag
         return ToolResponse(
-            shouldContinue: false,
+            shouldContinue: true,
             cursorUpdate: .pointer
         )
     }
@@ -157,15 +214,27 @@ import SwiftUI
     }
     
     private func handleDeleteKey() -> ToolResponse {
-        guard let markerIndex = selectedMarkerIndex else { return .empty }
+        guard let markerIndex = selectedMarkerIndex, 
+              let markersManager = markersManager,
+              markerIndex < markersManager.markers.count else { return .empty }
+        
+        let markerToDelete = markersManager.markers[markerIndex]
         
         // Create delete command
-        // This would need marker reference from EventManager
-        // For now, return empty - will be improved in integration
+        let deleteCommand = DeleteMarkerCommand(
+            markersManager: markersManager,
+            marker: markerToDelete,
+            at: markerIndex
+        )
+        
+        // Clear selection and highlighting
         selectedMarkerIndex = nil
+        selectedMarkerID = nil
+        markersManager.clearSelection()
         
         return ToolResponse(
-            shouldContinue: false,
+            shouldContinue: true,
+            commands: [deleteCommand],
             cursorUpdate: .default,
             clearSelection: true
         )

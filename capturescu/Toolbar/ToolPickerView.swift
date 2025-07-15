@@ -39,6 +39,12 @@ struct ToolPickerView: View {
                 active: selectionManager.pointerTool.toolName == PointerToolName.TextPointer,
                 action: { selectionManager.selectTool(named: .TextPointer) }
             )
+            ToolbarButton(
+                iconName: "arrow.up.left.and.arrow.down.right",
+                fontWeight: .medium,
+                active: selectionManager.pointerTool.toolName == PointerToolName.SelectionPointer,
+                action: { selectionManager.selectTool(named: .SelectionPointer) }
+            )
         }
     }
 }

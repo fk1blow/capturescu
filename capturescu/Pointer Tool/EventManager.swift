@@ -67,10 +67,18 @@ class EventManager: ObservableObject {
         if case .hover = event { return }
         if case .hoverEnd = event { return }
         
-        print("🔄 EventManager handling event: \(event)")
-        print("   Current tool: \(currentTool.toolName)")
+        // Special logging for double-click events only
+        if case .doubleClick(let point) = event {
+            print("🔄 DOUBLE-CLICK EVENT at \(point) - routing to \(currentTool.toolName)")
+        }
+        
         let response = currentTool.handleEvent(event)
-        print("   Tool response: shouldContinue=\(response.shouldContinue), commands=\(response.commands.count)")
+        
+        // Log tool switch responses for double-click debugging
+        if let toolSwitch = response.toolSwitch {
+            print("   Tool switch requested: \(toolSwitch)")
+        }
+        
         processResponse(response)
     }
     
@@ -78,13 +86,11 @@ class EventManager: ObservableObject {
     private func processResponse(_ response: ToolResponse) {
         // Execute commands through history manager
         for command in response.commands {
-            print("   Executing command: \(command.description)")
             historyManager.execute(command)
         }
         
         // Update UI state
         if let accessoryView = response.accessoryView {
-            print("   Setting accessory view")
             currentAccessoryView = accessoryView
         } else if !response.shouldContinue {
             currentAccessoryView = nil
@@ -116,7 +122,7 @@ class EventManager: ObservableObject {
     }
     
     /// Switch to a different tool
-    private func switchTool(to toolRequest: ToolSwitchRequest) {
+    func switchTool(to toolRequest: ToolSwitchRequest) {
         // Reset current tool
         currentTool.reset()
         
@@ -150,9 +156,7 @@ class EventManager: ObservableObject {
         case .arrowTool:
             toolsManager.selectTool(named: .ArrowPointer)
         case .selectionTool:
-            // Selection tool doesn't exist in current ToolsManager
-            // For now, keep current selection
-            break
+            toolsManager.selectTool(named: .SelectionPointer)
         }
     }
     
@@ -169,6 +173,8 @@ class EventManager: ObservableObject {
             toolRequest = .lineTool
         case .ArrowPointer:
             toolRequest = .arrowTool
+        case .SelectionPointer:
+            toolRequest = .selectionTool
         }
         
         switchTool(to: toolRequest)

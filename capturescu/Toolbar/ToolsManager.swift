@@ -26,6 +26,10 @@ class ToolsManager: ObservableObject {
             pointerTool = LinePointerTool(color: selectedColor)
         case .TextPointer:
             pointerTool = TextPointerTool(color: selectedColor)
+        case .SelectionPointer:
+            // For selection tool, we create a dummy TextPointerTool but keep the toolName as SelectionPointer
+            // The actual selection logic is handled by the new EventManager system
+            pointerTool = SelectionPointerTool(color: selectedColor)
         }
     }
 

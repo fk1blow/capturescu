@@ -25,6 +25,7 @@ struct CapturedPasteboardImage {
 struct ContentView: View, KeyboardCommandResponder {
     @EnvironmentObject var markersManager: MarkersManager
     @EnvironmentObject var toolsManager: ToolsManager
+    @EnvironmentObject var eventManager: EventManager
     @ObservedObject private var windowSizeManager = WindowSizeManager.shared
 
     @State var capturedImage: CapturedPasteboardImage?
@@ -85,6 +86,9 @@ struct ContentView: View, KeyboardCommandResponder {
             
         case .selectTextTool:
             toolsManager.selectTool(named: PointerToolName.TextPointer)
+            
+        case .selectSelectionTool:
+            eventManager.switchTool(to: .selectionTool)
             
         case .deleteMarker:
             markersManager.deleteSelectedMarker()

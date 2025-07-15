@@ -66,6 +66,25 @@ import SwiftUI
     // MARK: - Event Handlers
     
     private func handleClick(at point: CGPoint) -> ToolResponse {
+        // Check if clicking on an existing marker
+        if let markersManager = markersManager {
+            let markerFinder = MarkerFinder(markersManager: markersManager)
+            
+            if let editableMarker = markerFinder.findEditableMarkerAt(point) {
+                if editableMarker.canEdit {
+                    // Edit existing text marker
+                    return handleEditMarker(editableMarker.marker, at: point, index: editableMarker.index)
+                } else {
+                    // Non-text marker - switch to selection tool
+                    return ToolResponse(
+                        shouldContinue: true,
+                        toolSwitch: .selectionTool,
+                        editMarker: (editableMarker.marker, editableMarker.index)
+                    )
+                }
+            }
+        }
+        
         // Create new text marker
         let accessoryView = createTextEditor(at: point)
         return ToolResponse(
