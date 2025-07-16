@@ -38,9 +38,9 @@ struct DrawingSurfaceView: View {
         let screenScale = NSScreen.main?.backingScaleFactor ?? 1.0
 
         // Render at actual pixel size (1:1 mapping) with user scale applied
-        // Divide by screenScale to convert pixels to points for display
-        let width = CGFloat(capturedImage!.image.width) * capturedImage!.scale / screenScale
-        let height = CGFloat(capturedImage!.image.height) * capturedImage!.scale / screenScale
+        // Display images at their native pixel size without screen scale conversion
+        let width = CGFloat(capturedImage!.image.width) * capturedImage!.scale
+        let height = CGFloat(capturedImage!.image.height) * capturedImage!.scale
 
         ctx.draw(
           Image(

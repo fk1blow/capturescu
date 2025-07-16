@@ -103,74 +103,169 @@ struct ContentView: View, KeyboardCommandResponder {
         // Try to get scale from the window's current screen for better multi-display support
         if let window = NSApplication.shared.keyWindow ?? NSApplication.shared.windows.first,
            let screen = window.screen {
-            return screen.backingScaleFactor
+            let scale = screen.backingScaleFactor
+            // Validate scale factor to prevent edge cases
+            return validateScaleFactor(scale)
         }
         
         // Fallback to main screen
-        return NSScreen.main?.backingScaleFactor ?? 1.0
+        let fallbackScale = NSScreen.main?.backingScaleFactor ?? 1.0
+        return validateScaleFactor(fallbackScale)
+    }
+    
+    private func validateScaleFactor(_ scale: CGFloat) -> CGFloat {
+        // Ensure scale factor is within reasonable bounds
+        return (scale > 0 && scale <= 10.0) ? scale : 1.0
+    }
+    
+    private func calculateRendererScale(
+        capturedImage: CapturedPasteboardImage?,
+        markersBounds: CGRect
+    ) -> CGFloat? {
+        let screenScale = getDisplayScaleFactor()
+        
+        // Validate screen scale to prevent edge cases
+        guard screenScale > 0 && screenScale <= 10.0 else {
+            return nil
+        }
+        
+        // If we have a captured image, calculate scale to preserve original dimensions
+        guard let capturedImage = capturedImage else {
+            return screenScale
+        }
+        
+        // Validate bounds to prevent division by zero and invalid dimensions
+        guard validateBounds(markersBounds) else {
+            return nil
+        }
+        
+        let originalImageSize = CGSize(
+            width: CGFloat(capturedImage.image.width),
+            height: CGFloat(capturedImage.image.height)
+        )
+        
+        // Validate original image dimensions
+        guard validateImageSize(originalImageSize) else {
+            return nil
+        }
+        
+        // Calculate scale to preserve original pixel dimensions
+        let baseScale = calculateBaseScale(
+            originalSize: originalImageSize,
+            boundsSize: markersBounds.size
+        )
+        
+        guard let validBaseScale = baseScale else {
+            return nil
+        }
+        
+        // NO-SCALING APPROACH: Always render at 1.0 scale to preserve exact pixel data
+        // External apps will handle their own display scaling as needed
+        let preserveOriginalScale: CGFloat = 1.0
+        
+        // Debug logging to verify the scaling fix
+        print("DEBUG COPY: baseScale=\(validBaseScale), screenScale=\(screenScale), final=\(preserveOriginalScale)")
+        print("DEBUG COPY: originalSize=\(originalImageSize), boundsSize=\(markersBounds.size)")
+        
+        // Final validation of the preserve scale
+        guard preserveOriginalScale > 0 && preserveOriginalScale <= 1000.0 else {
+            return nil
+        }
+        
+        return preserveOriginalScale
+    }
+    
+    private func validateBounds(_ bounds: CGRect) -> Bool {
+        return bounds.width > 0 && bounds.height > 0 &&
+               bounds.width <= 32768 && bounds.height <= 32768
+    }
+    
+    private func validateImageSize(_ size: CGSize) -> Bool {
+        return size.width > 0 && size.height > 0 &&
+               size.width <= 32768 && size.height <= 32768
+    }
+    
+    private func calculateBaseScale(
+        originalSize: CGSize,
+        boundsSize: CGSize
+    ) -> CGFloat? {
+        // Calculate scale to preserve original pixel dimensions
+        // The renderer scale should make the output match the original image size
+        let widthScale = originalSize.width / boundsSize.width
+        let heightScale = originalSize.height / boundsSize.height
+        let baseScale = min(widthScale, heightScale)
+        
+        // Validate calculated scale to prevent invalid values
+        guard baseScale > 0 && baseScale <= 100.0 else {
+            return nil
+        }
+        
+        return baseScale
+    }
+    
+    private func getCurrentImageData() -> (image: CGImage, isCapturescuRendered: Bool)? {
+        return NSPasteboard.getImage()
     }
 
     private func handlePasteAction() {
-        if let imageData = NSPasteboard.getImage() {
-            let image = imageData.image
-            let isCapturescuRendered = imageData.isCapturescuRendered
+        guard let imageData = NSPasteboard.getImage() else {
+            return
+        }
+        
+        let image = imageData.image
+        let isCapturescuRendered = imageData.isCapturescuRendered
+        
+        let imageSize = CGSize(width: image.width, height: image.height)
+        
+        // Debug logging to understand the scaling issue
+        print("DEBUG PASTE: imageSize=\(imageSize), isCapturescuRendered=\(isCapturescuRendered)")
+        
+        // Validate image dimensions
+        guard imageSize.width > 0 && imageSize.height > 0 else {
+            return
+        }
+        
+        let _ = getDisplayScaleFactor()
+        
+        // Calculate scale factor for the image
+        let scale = windowSizeManager.calculateImageScale(for: imageSize)
+        
+        // Calculate new window size based on scaled image
+        let windowSize = windowSizeManager.calculateWindowSize(for: imageSize)
+        
+        // Resize the window to fit the image with completion callback
+        windowSizeManager.resizeWindow(to: windowSize) {
+            let _ = self.getDisplayScaleFactor()
             
-            let imageSize = CGSize(width: image.width, height: image.height)
+            // Calculate scaled size in points
+            // External images should be displayed at their native pixel size without screen scale conversion
+            let scaledSize = CGSize(
+                width: imageSize.width * scale,
+                height: imageSize.height * scale
+            )
             
-            // Debug logging for paste behavior
-            let screenScale = getDisplayScaleFactor()
-            print("📋 Image paste:")
-            print("  • Image size: \(imageSize)")
-            print("  • Is Capturescu rendered: \(isCapturescuRendered)")
-            print("  • Screen scale: \(screenScale)")
+            // Calculate available space for image (excluding padding and toolbar)
+            let availableWidth = windowSize.width - LayoutConstants.totalHorizontalPadding
+            let availableHeight = windowSize.height - LayoutConstants.totalVerticalSpace
             
-            // Calculate scale factor for the image
-            let scale = windowSizeManager.calculateImageScale(for: imageSize)
+            // Position image in available space with padding
+            let x = LayoutConstants.imagePadding + (availableWidth - scaledSize.width) / 2
+            let y = LayoutConstants.imagePadding + (availableHeight - scaledSize.height) / 2
             
-            // Calculate new window size based on scaled image
-            let windowSize = windowSizeManager.calculateWindowSize(for: imageSize)
-            
-            // Resize the window to fit the image with completion callback
-            windowSizeManager.resizeWindow(to: windowSize) {
-                
-                let screenScale = self.getDisplayScaleFactor()
-                
-                // Calculate scaled size in points
-                let scaledSize: CGSize
-                if isCapturescuRendered {
-                    // Capturescu-rendered images are already in points, don't apply screen scale conversion
-                    scaledSize = CGSize(
-                        width: imageSize.width * scale,
-                        height: imageSize.height * scale
-                    )
-                    print("  • Scaling (Capturescu-rendered): \(imageSize) × \(scale) = \(scaledSize)")
-                } else {
-                    // Original screenshots need screen scale conversion from pixels to points
-                    scaledSize = CGSize(
-                        width: (imageSize.width / screenScale) * scale,
-                        height: (imageSize.height / screenScale) * scale
-                    )
-                    print("  • Scaling (Original): \(imageSize) ÷ \(screenScale) × \(scale) = \(scaledSize)")
-                }
-                
-                // Calculate available space for image (excluding padding and toolbar)
-                let availableWidth = windowSize.width - LayoutConstants.totalHorizontalPadding
-                let availableHeight = windowSize.height - LayoutConstants.totalVerticalSpace
-                
-                // Position image in available space with padding
-                let x = LayoutConstants.imagePadding + (availableWidth - scaledSize.width) / 2
-                let y = LayoutConstants.imagePadding + (availableHeight - scaledSize.height) / 2
-                
-                capturedImage = CapturedPasteboardImage(
-                    image: image,
-                    position: CGPoint(x: x, y: y),
-                    scale: scale
-                )
-            }
+            capturedImage = CapturedPasteboardImage(
+                image: image,
+                position: CGPoint(x: x, y: y),
+                scale: scale
+            )
         }
     }
 
     private func handleCopyAction() {
+        // Ensure we have content to copy
+        guard capturedImage != nil || !markersManager.markers.isEmpty else {
+            return
+        }
+        
         let markersBoundingBox = CaptureScreenshotBounds(
             paths: markersManager.markersPaths(), capturedImage: capturedImage
         )
@@ -183,67 +278,30 @@ struct ContentView: View, KeyboardCommandResponder {
             )
         )
         
-        // Set the renderer scale to preserve original image pixel dimensions
-        // This ensures screenshots maintain the same size as the source image
-        let screenScale = getDisplayScaleFactor()
+        // Calculate and set the renderer scale to preserve original image dimensions
+        let rendererScale = calculateRendererScale(
+            capturedImage: capturedImage,
+            markersBounds: markersBoundingBox.bounds
+        )
         
-        // Calculate the scale needed to preserve original image dimensions
-        let preserveOriginalScale: CGFloat
-        if let capturedImage = capturedImage {
-            // Calculate the scale needed to make the output match the original image size
-            let bounds = markersBoundingBox.bounds
-            let originalImageWidth = CGFloat(capturedImage.image.width)
-            let originalImageHeight = CGFloat(capturedImage.image.height)
-            
-            // Calculate scale to preserve original pixel dimensions
-            // The renderer scale should make the output match the original image size
-            let widthScale = originalImageWidth / bounds.width
-            let heightScale = originalImageHeight / bounds.height
-            let baseScale = min(widthScale, heightScale)
-            
-            // Account for the screen scale factor that ImageRenderer applies internally
-            // We need to multiply by screen scale to counteract the internal scaling
-            preserveOriginalScale = baseScale * screenScale
-        } else {
-            // Fallback to screen scale if no captured image
-            preserveOriginalScale = screenScale
+        guard let validScale = rendererScale else {
+            return
         }
         
-        renderer.scale = preserveOriginalScale
+        renderer.scale = validScale
         
-        // Debug logging for scaling behavior
-        let bounds = markersBoundingBox.bounds
-        print("📸 Screenshot capture:")
-        print("  • Screen scale factor: \(screenScale)")
-        print("  • Preserve original scale: \(preserveOriginalScale)")
-        print("  • Renderer scale: \(renderer.scale)")
-        print("  • Bounding box: \(bounds)")
-        print("  • Output size will be: \(bounds.width * renderer.scale / screenScale) x \(bounds.height * renderer.scale / screenScale) pixels")
-        if let capturedImage = capturedImage {
-            print("  • Original image: \(capturedImage.image.width) x \(capturedImage.image.height) pixels")
-            let originalImageWidth = CGFloat(capturedImage.image.width)
-            let originalImageHeight = CGFloat(capturedImage.image.height)
-            let widthScale = originalImageWidth / bounds.width
-            let heightScale = originalImageHeight / bounds.height
-            let baseScale = min(widthScale, heightScale)
-            print("  • Base scale: \(baseScale)")
-            print("  • Width scale: \(originalImageWidth) / \(bounds.width) = \(widthScale)")
-            print("  • Height scale: \(originalImageHeight) / \(bounds.height) = \(heightScale)")
-            print("  • Final scale: \(baseScale) × \(screenScale) = \(preserveOriginalScale)")
-            print("  • Expected output: \(originalImageWidth) x \(originalImageHeight) pixels")
+        // Attempt to render the image with error handling
+        guard let capture = renderer.cgImage else {
+            return
         }
         
-        
-        let capture = renderer.cgImage
-        
-        // Debug logging for clipboard operations
-        if let capture = capture {
-            print("📎 Clipboard operation:")
-            print("  • Rendered image size: \(capture.width) x \(capture.height) pixels")
-            print("  • Adding to clipboard...")
+        // Pass the DISPLAY size for proper metadata storage (not rendered size)
+        // This ensures we can restore the correct display size when pasting back
+        let actualOriginalSize = capturedImage.map { capturedImg in
+            CGSize(width: capturedImg.image.width, height: capturedImg.image.height)
         }
-
-        NSPasteboard.addImage(capture: capture)
+        
+        NSPasteboard.addImage(capture: capture, originalImageSize: actualOriginalSize)
     }
 
 }
