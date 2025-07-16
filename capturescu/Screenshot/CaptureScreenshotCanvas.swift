@@ -23,8 +23,9 @@ struct CaptureScreenshotCanvas: View {
                 let screenScale = NSScreen.main?.backingScaleFactor ?? 1.0
                 
                 // Render at actual pixel size (1:1 mapping) with user scale applied
-                let width = CGFloat(self.capturedImage!.image.width) * self.capturedImage!.scale
-                let height = CGFloat(self.capturedImage!.image.height) * self.capturedImage!.scale
+                // Divide by screenScale to convert pixels to points (matching DrawingSurfaceView)
+                let width = CGFloat(self.capturedImage!.image.width) * self.capturedImage!.scale / screenScale
+                let height = CGFloat(self.capturedImage!.image.height) * self.capturedImage!.scale / screenScale
                 
 
                 // Calculate the distance between the original canvas x,y and the annotation bounds x,y
@@ -58,7 +59,8 @@ struct CaptureScreenshotCanvas: View {
                 marker.draw(onto: ctx)
             }
         }
-        .frame(width: capturedBounds.width, height: capturedBounds.height)
+        .frame(width: capturedBounds.width / (NSScreen.main?.backingScaleFactor ?? 1.0), 
+               height: capturedBounds.height / (NSScreen.main?.backingScaleFactor ?? 1.0))
         // .border(.black)
         .background(Color(hex: "#282828"))
     }
