@@ -17,6 +17,9 @@
 		2B1CF0B32CB8501A00680F38 /* DrawingMarker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B1CF0B22CB8501A00680F38 /* DrawingMarker.swift */; };
 		2B1CF0B52CB8504E00680F38 /* ImageMarker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B1CF0B42CB8504E00680F38 /* ImageMarker.swift */; };
 		2B1CF0B72CB8507300680F38 /* TextMarker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B1CF0B62CB8507300680F38 /* TextMarker.swift */; };
+		2BDRAW002CB8507400680F38 /* DrawingSurfaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BDRAW001CB8507400680F38 /* DrawingSurfaceView.swift */; };
+		2BDRAW003CB8507400680F38 /* DrawingSurfaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BDRAW001CB8507400680F38 /* DrawingSurfaceView.swift */; };
+		2BDRAW004CB8507400680F38 /* DrawingSurfaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BDRAW001CB8507400680F38 /* DrawingSurfaceView.swift */; };
 		2B2865302CB2D9D60099BBCB /* ModernSlider in Frameworks */ = {isa = PBXBuildFile; productRef = 2B28652F2CB2D9D60099BBCB /* ModernSlider */; };
 		2B3A94692BFA38DA007F4E0D /* OnPasteboardChange in Frameworks */ = {isa = PBXBuildFile; productRef = 2B3A94682BFA38DA007F4E0D /* OnPasteboardChange */; };
 		2B4D22702CB7EABF0082C06E /* SizePickerButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B4D226F2CB7EABF0082C06E /* SizePickerButton.swift */; };
@@ -70,9 +73,6 @@
 		2BC306FD2E2657DD001D2739 /* PointerEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BC306EA2E2657DD001D2739 /* PointerEvent.swift */; };
 		2BC307022E2657DD001D2739 /* EventManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BC306E22E2657DD001D2739 /* EventManager.swift */; };
 		2BC307072E2657DD001D2739 /* PointerEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BC306EA2E2657DD001D2739 /* PointerEvent.swift */; };
-		2BC3070B2E2657EB001D2739 /* NewDrawingSurfaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BC3070A2E2657EB001D2739 /* NewDrawingSurfaceView.swift */; };
-		2BC3070C2E2657EB001D2739 /* NewDrawingSurfaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BC3070A2E2657EB001D2739 /* NewDrawingSurfaceView.swift */; };
-		2BC3070D2E2657EB001D2739 /* NewDrawingSurfaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BC3070A2E2657EB001D2739 /* NewDrawingSurfaceView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -103,6 +103,7 @@
 		2B1CF0B22CB8501A00680F38 /* DrawingMarker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DrawingMarker.swift; sourceTree = "<group>"; };
 		2B1CF0B42CB8504E00680F38 /* ImageMarker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageMarker.swift; sourceTree = "<group>"; };
 		2B1CF0B62CB8507300680F38 /* TextMarker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextMarker.swift; sourceTree = "<group>"; };
+		2BDRAW001CB8507400680F38 /* DrawingSurfaceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DrawingSurfaceView.swift; sourceTree = "<group>"; };
 		2B4D226F2CB7EABF0082C06E /* SizePickerButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SizePickerButton.swift; sourceTree = "<group>"; };
 		2B4D22712CB7EE280082C06E /* ToolPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolPickerView.swift; sourceTree = "<group>"; };
 		2B5A7B242E26D7D90052744A /* PointerToolName.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PointerToolName.swift; sourceTree = "<group>"; };
@@ -140,7 +141,6 @@
 		2BBC9EAD2CB70B5F004B2616 /* WindowStyleModifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowStyleModifier.swift; sourceTree = "<group>"; };
 		2BC306E22E2657DD001D2739 /* EventManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventManager.swift; sourceTree = "<group>"; };
 		2BC306EA2E2657DD001D2739 /* PointerEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PointerEvent.swift; sourceTree = "<group>"; };
-		2BC3070A2E2657EB001D2739 /* NewDrawingSurfaceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewDrawingSurfaceView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -177,12 +177,12 @@
 		2B1C58AB2CB5D8D000EF826D /* Drawing */ = {
 			isa = PBXGroup;
 			children = (
-				2BC3070A2E2657EB001D2739 /* NewDrawingSurfaceView.swift */,
 				2B0D4A9F2CBBC89800647C79 /* MarkersManager.swift */,
 				2B1C58AC2CB5D90900EF826D /* Marker.swift */,
 				2B1CF0B22CB8501A00680F38 /* DrawingMarker.swift */,
 				2B1CF0B42CB8504E00680F38 /* ImageMarker.swift */,
 				2B1CF0B62CB8507300680F38 /* TextMarker.swift */,
+				2BDRAW001CB8507400680F38 /* DrawingSurfaceView.swift */,
 			);
 			path = Drawing;
 			sourceTree = "<group>";
@@ -477,6 +477,7 @@
 				2B60BFD92CC525F40011E38B /* Color+Contrast.swift in Sources */,
 				2B5B856A2CADE17C0028CE00 /* View+SaveSize.swift in Sources */,
 				2B1CF0B72CB8507300680F38 /* TextMarker.swift in Sources */,
+				2BDRAW002CB8507400680F38 /* DrawingSurfaceView.swift in Sources */,
 				2B82F0F92CAF31AD000D9B7E /* GeometryGetter.swift in Sources */,
 				2BAA2BEF2CB71B3100D2254A /* Color+Hex.swift in Sources */,
 				2B0D4AA02CBBC89800647C79 /* MarkersManager.swift in Sources */,
@@ -484,7 +485,6 @@
 				2B9004AF2CB20DA900E240D5 /* CaptureScreenshotBounds.swift in Sources */,
 				2B4D22702CB7EABF0082C06E /* SizePickerButton.swift in Sources */,
 				2B0B088C2C9EC18A00FA6C98 /* KeyPressView.swift in Sources */,
-				2BC3070D2E2657EB001D2739 /* NewDrawingSurfaceView.swift in Sources */,
 				2B60BFD72CC4A8D00011E38B /* Color+Inverse.swift in Sources */,
 				2B1C58AD2CB5D90900EF826D /* Marker.swift in Sources */,
 				2BBA38972CDA8D09004CC47A /* KeyboardManager.swift in Sources */,
@@ -518,8 +518,8 @@
 				2B5A7B2B2E26EB7C0052744A /* LinePointerTool.swift in Sources */,
 				2B5A7B2C2E26EB7C0052744A /* FreehandPointerTool.swift in Sources */,
 				2B5A7B2D2E26EB7C0052744A /* ArrowPointerTool.swift in Sources */,
-				2BC3070C2E2657EB001D2739 /* NewDrawingSurfaceView.swift in Sources */,
 				2B9145C52BFA2B7E00CA8097 /* capturescuTests.swift in Sources */,
+				2BDRAW003CB8507400680F38 /* DrawingSurfaceView.swift in Sources */,
 				2BC306F82E2657DD001D2739 /* EventManager.swift in Sources */,
 				2B5A7B272E26D7D90052744A /* PointerToolName.swift in Sources */,
 				2BC306FD2E2657DD001D2739 /* PointerEvent.swift in Sources */,
@@ -530,7 +530,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				2BC3070B2E2657EB001D2739 /* NewDrawingSurfaceView.swift in Sources */,
 				2B5A7B312E26EB7C0052744A /* LinePointerTool.swift in Sources */,
 				2B5A7B322E26EB7C0052744A /* FreehandPointerTool.swift in Sources */,
 				2B5A7B3D2E26EB880052744A /* PointerTool.swift in Sources */,
@@ -538,6 +537,7 @@
 				2B5A7B3F2E26EB880052744A /* SelectionTool.swift in Sources */,
 				2B5A7B332E26EB7C0052744A /* ArrowPointerTool.swift in Sources */,
 				2B9145CF2BFA2B7E00CA8097 /* capturescuUITests.swift in Sources */,
+				2BDRAW004CB8507400680F38 /* DrawingSurfaceView.swift in Sources */,
 				2BC306EE2E2657DD001D2739 /* EventManager.swift in Sources */,
 				2BC306F32E2657DD001D2739 /* PointerEvent.swift in Sources */,
 				2B9145D12BFA2B7E00CA8097 /* capturescuUITestsLaunchTests.swift in Sources */,

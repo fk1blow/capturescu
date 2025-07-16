@@ -10,6 +10,7 @@ import SwiftUI
 
 @Observable class SelectionTool: PointerTool {
     let toolName = PointerToolName.SelectionPointer
+    let needsAccessoryView = false
     
     private let markerFinder: MarkerFinder
     var isDragging = false
@@ -62,6 +63,10 @@ import SwiftUI
         
         // Clear highlighting when resetting
         markersManager?.clearSelection()
+    }
+    
+    func renderPreview(context: GraphicsContext) {
+        // Selection tool doesn't need preview rendering
     }
     
     // MARK: - Event Handlers

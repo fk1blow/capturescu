@@ -10,6 +10,7 @@ import SwiftUI
 
 @Observable class LinePointerTool: PointerTool {
     let toolName = PointerToolName.LinePointer
+    let needsAccessoryView = false
     
     private var markerColor: MarkerColor
     var startPoint: CGPoint?

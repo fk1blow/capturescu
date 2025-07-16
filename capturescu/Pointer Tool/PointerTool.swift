@@ -24,7 +24,7 @@ protocol PointerTool: AnyObject {
 }
 
 /// Default implementations for common functionality
-extension NewPointerTool {
+extension PointerTool {
     var needsAccessoryView: Bool { false }
     
     func renderPreview(context: GraphicsContext) {

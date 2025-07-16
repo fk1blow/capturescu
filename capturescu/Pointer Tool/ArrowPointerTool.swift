@@ -10,6 +10,7 @@ import SwiftUI
 
 @Observable class ArrowPointerTool: PointerTool {
     let toolName = PointerToolName.ArrowPointer
+    let needsAccessoryView = false
     
     private var markerColor: MarkerColor
     var startPoint: CGPoint?

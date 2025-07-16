@@ -10,6 +10,7 @@ import SwiftUI
 
 @Observable class FreehandPointerTool: PointerTool {
     let toolName = PointerToolName.FreehandPointer
+    let needsAccessoryView = false
     
     private var markerColor: MarkerColor
     var currentMarker: DrawingMarker?
