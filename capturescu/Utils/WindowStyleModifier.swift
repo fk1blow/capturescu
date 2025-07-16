@@ -133,6 +133,30 @@ class WindowSizeManager: ObservableObject {
         }
     }
     
+    // Resize the window to the specified size with completion callback
+    func resizeWindow(to size: CGSize, completion: @escaping () -> Void) {
+        DispatchQueue.main.async {
+            if let window = NSApplication.shared.windows.first {
+                let currentFrame = window.frame
+                let newFrame = CGRect(
+                    x: currentFrame.origin.x,
+                    y: currentFrame.origin.y + (currentFrame.height - size.height), // Adjust y to keep window position
+                    width: size.width,
+                    height: size.height
+                )
+                window.setFrame(newFrame, display: true, animate: false)
+                
+                // Call completion on the next run loop cycle to ensure frame is set
+                DispatchQueue.main.async {
+                    completion()
+                }
+            } else {
+                // If no window found, still call completion to avoid hanging
+                completion()
+            }
+        }
+    }
+    
     // Set initial window size
     func setInitialWindowSize() {
         let initialSize = CGSize(width: Self.minimumWidth, height: Self.minimumHeight)

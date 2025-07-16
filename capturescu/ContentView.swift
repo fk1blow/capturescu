@@ -43,10 +43,10 @@ struct ContentView: View, KeyboardCommandResponder {
                     .background(GeometryGetter(rect: $drawingSurfaceBounds))
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .onAppear(perform: {
-                        // temporarely disabled
-                        // DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        //     handlePasteAction()
-                        // }
+                        // Re-enabled after fixing race condition issues
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            handlePasteAction()
+                        }
                     })
 
                 ToolbarView()
@@ -103,22 +103,15 @@ struct ContentView: View, KeyboardCommandResponder {
         if let image = NSPasteboard.getImage() {
             let imageSize = CGSize(width: image.width, height: image.height)
             
-            
-            // DEBUG: Compare with what we had before (if any)
-            if let previousImage = capturedImage {
-            }
-            
             // Calculate scale factor for the image
             let scale = windowSizeManager.calculateImageScale(for: imageSize)
             
             // Calculate new window size based on scaled image
             let windowSize = windowSizeManager.calculateWindowSize(for: imageSize)
             
-            // Resize the window to fit the image
-            windowSizeManager.resizeWindow(to: windowSize)
-            
-            // Wait for window resize to complete, then position the image
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            // Resize the window to fit the image with completion callback
+            windowSizeManager.resizeWindow(to: windowSize) {
+                
                 let screenScale = NSScreen.main?.backingScaleFactor ?? 1.0
                 
                 // Calculate scaled size in points
@@ -135,14 +128,12 @@ struct ContentView: View, KeyboardCommandResponder {
                 let x = LayoutConstants.imagePadding + (availableWidth - scaledSize.width) / 2
                 let y = LayoutConstants.imagePadding + (availableHeight - scaledSize.height) / 2
                 
-                
                 capturedImage = CapturedPasteboardImage(
                     image: image,
                     position: CGPoint(x: x, y: y),
                     scale: scale
                 )
             }
-        } else {
         }
     }
 
