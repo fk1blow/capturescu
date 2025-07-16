@@ -192,8 +192,13 @@ struct DraggableAreaView: View {
 }
 
 #Preview(traits: .sizeThatFitsLayout) {
-    ContentView()
-        .environmentObject(ToolsManager())
-        .environmentObject(MarkersManager())
+    let toolsManager = ToolsManager()
+    let markersManager = MarkersManager()
+    let eventManager = EventManager(markersManager: markersManager, toolsManager: toolsManager)
+    
+    return ContentView()
+        .environmentObject(toolsManager)
+        .environmentObject(markersManager)
+        .environmentObject(eventManager)
         .frame(width: 900, height: 400)
 }
