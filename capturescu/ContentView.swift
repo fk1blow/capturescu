@@ -99,112 +99,44 @@ struct ContentView: View, KeyboardCommandResponder {
         }
     }
     
-    private func getDisplayScaleFactor() -> CGFloat {
-        // Try to get scale from the window's current screen for better multi-display support
-        if let window = NSApplication.shared.keyWindow ?? NSApplication.shared.windows.first,
-           let screen = window.screen {
-            let scale = screen.backingScaleFactor
-            // Validate scale factor to prevent edge cases
-            return validateScaleFactor(scale)
-        }
-        
-        // Fallback to main screen
-        let fallbackScale = NSScreen.main?.backingScaleFactor ?? 1.0
-        return validateScaleFactor(fallbackScale)
-    }
-    
-    private func validateScaleFactor(_ scale: CGFloat) -> CGFloat {
-        // Ensure scale factor is within reasonable bounds
-        return (scale > 0 && scale <= 10.0) ? scale : 1.0
-    }
     
     private func calculateRendererScale(
         capturedImage: CapturedPasteboardImage?,
         markersBounds: CGRect
     ) -> CGFloat? {
-        let screenScale = getDisplayScaleFactor()
-        
-        // Validate screen scale to prevent edge cases
-        guard screenScale > 0 && screenScale <= 10.0 else {
-            return nil
-        }
-        
-        // If we have a captured image, calculate scale to preserve original dimensions
-        guard let capturedImage = capturedImage else {
-            return screenScale
-        }
-        
-        // Validate bounds to prevent division by zero and invalid dimensions
-        guard validateBounds(markersBounds) else {
-            return nil
-        }
-        
-        let originalImageSize = CGSize(
-            width: CGFloat(capturedImage.image.width),
-            height: CGFloat(capturedImage.image.height)
-        )
-        
-        // Validate original image dimensions
-        guard validateImageSize(originalImageSize) else {
-            return nil
-        }
-        
-        // Calculate scale to preserve original pixel dimensions
-        let baseScale = calculateBaseScale(
-            originalSize: originalImageSize,
-            boundsSize: markersBounds.size
-        )
-        
-        guard let validBaseScale = baseScale else {
-            return nil
-        }
-        
         // NO-SCALING APPROACH: Always render at 1.0 scale to preserve exact pixel data
         // External apps will handle their own display scaling as needed
-        let preserveOriginalScale: CGFloat = 1.0
+        return 1.0
+    }
+    
+    
+
+    private func detectScreenshotScale(imageSize: CGSize) -> CGFloat {
+        // Get current screen info for Retina detection
+        guard let screen = NSScreen.main else { return 1.0 }
         
-        // Debug logging to verify the scaling fix
-        print("DEBUG COPY: baseScale=\(validBaseScale), screenScale=\(screenScale), final=\(preserveOriginalScale)")
-        print("DEBUG COPY: originalSize=\(originalImageSize), boundsSize=\(markersBounds.size)")
+        let screenPixelSize = CGSize(
+            width: screen.frame.width * screen.backingScaleFactor,
+            height: screen.frame.height * screen.backingScaleFactor
+        )
         
-        // Final validation of the preserve scale
-        guard preserveOriginalScale > 0 && preserveOriginalScale <= 1000.0 else {
-            return nil
+        // Check if image dimensions suggest a Retina screenshot
+        // Screenshots are often exactly 2x the logical screen size
+        let tolerance: CGFloat = 0.1 // 10% tolerance for different screenshot sizes
+        
+        let isLikelyRetinaScreenshot = 
+            screen.backingScaleFactor == 2.0 && // Retina display
+            (imageSize.width > screen.frame.width * 1.5) && // Significantly larger than logical size
+            (imageSize.width <= screenPixelSize.width * (1.0 + tolerance)) && // Within screen bounds
+            (imageSize.height <= screenPixelSize.height * (1.0 + tolerance))
+        
+        if isLikelyRetinaScreenshot {
+            print("DEBUG DETECTION: Detected likely Retina screenshot - using 0.5 display scale")
+            return 0.5 // Display at half size to match logical screen dimensions
         }
         
-        return preserveOriginalScale
-    }
-    
-    private func validateBounds(_ bounds: CGRect) -> Bool {
-        return bounds.width > 0 && bounds.height > 0 &&
-               bounds.width <= 32768 && bounds.height <= 32768
-    }
-    
-    private func validateImageSize(_ size: CGSize) -> Bool {
-        return size.width > 0 && size.height > 0 &&
-               size.width <= 32768 && size.height <= 32768
-    }
-    
-    private func calculateBaseScale(
-        originalSize: CGSize,
-        boundsSize: CGSize
-    ) -> CGFloat? {
-        // Calculate scale to preserve original pixel dimensions
-        // The renderer scale should make the output match the original image size
-        let widthScale = originalSize.width / boundsSize.width
-        let heightScale = originalSize.height / boundsSize.height
-        let baseScale = min(widthScale, heightScale)
-        
-        // Validate calculated scale to prevent invalid values
-        guard baseScale > 0 && baseScale <= 100.0 else {
-            return nil
-        }
-        
-        return baseScale
-    }
-    
-    private func getCurrentImageData() -> (image: CGImage, isCapturescuRendered: Bool)? {
-        return NSPasteboard.getImage()
+        print("DEBUG DETECTION: Regular image - using 1.0 display scale")
+        return 1.0
     }
 
     private func handlePasteAction() {
@@ -225,18 +157,17 @@ struct ContentView: View, KeyboardCommandResponder {
             return
         }
         
-        let _ = getDisplayScaleFactor()
+        // Detect if this is likely a Retina screenshot and adjust display scale
+        let detectedDisplayScale = detectScreenshotScale(imageSize: imageSize)
         
-        // Calculate scale factor for the image
-        let scale = windowSizeManager.calculateImageScale(for: imageSize)
+        // Calculate scale factor for the image using the detected display scale
+        let scale = windowSizeManager.calculateImageScale(for: imageSize) * detectedDisplayScale
         
         // Calculate new window size based on scaled image
         let windowSize = windowSizeManager.calculateWindowSize(for: imageSize)
         
         // Resize the window to fit the image with completion callback
         windowSizeManager.resizeWindow(to: windowSize) {
-            let _ = self.getDisplayScaleFactor()
-            
             // Calculate scaled size in points
             // External images should be displayed at their native pixel size without screen scale conversion
             let scaledSize = CGSize(
