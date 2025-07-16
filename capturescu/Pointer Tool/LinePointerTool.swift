@@ -1,5 +1,5 @@
 //
-//  NewLinePointerTool.swift
+//  LinePointerTool.swift
 //  capturescu
 //
 //  Created by Dragos Tudorache
@@ -8,7 +8,7 @@
 import Foundation
 import SwiftUI
 
-@Observable class NewLinePointerTool: NewPointerTool {
+@Observable class LinePointerTool: PointerTool {
     let toolName = PointerToolName.LinePointer
     
     private var markerColor: MarkerColor

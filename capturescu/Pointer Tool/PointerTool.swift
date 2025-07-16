@@ -1,5 +1,5 @@
 //
-//  NewPointerTool.swift
+//  PointerTool.swift
 //  capturescu
 //
 //  Created by Dragos Tudorache
@@ -8,8 +8,8 @@
 import Foundation
 import SwiftUI
 
-/// New event-driven pointer tool protocol
-protocol NewPointerTool: AnyObject {
+/// Event-driven pointer tool protocol
+protocol PointerTool: AnyObject {
     var toolName: PointerToolName { get }
     var needsAccessoryView: Bool { get }
     

@@ -14,18 +14,18 @@ class EventManager: ObservableObject {
     @Published var currentCursor: CursorType = .default
     @Published var canvasUpdateTrigger: Bool = false
     
-    private var currentTool: NewPointerTool
+    private var currentTool: PointerTool
     var markersManager: MarkersManager
     var toolsManager: ToolsManager
     private let historyManager: HistoryManager
     private var markerFinder: MarkerFinder
     
     // Tool instances
-    private let textTool: NewTextPointerTool
-    private let freehandTool: NewFreehandPointerTool
-    private let lineTool: NewLinePointerTool
-    private let arrowTool: NewArrowPointerTool
-    private let selectionTool: NewSelectionTool
+    private let textTool: TextPointerTool
+    private let freehandTool: FreehandPointerTool
+    private let lineTool: LinePointerTool
+    private let arrowTool: ArrowPointerTool
+    private let selectionTool: SelectionTool
     
     init(markersManager: MarkersManager, toolsManager: ToolsManager) {
         self.markersManager = markersManager
@@ -34,23 +34,23 @@ class EventManager: ObservableObject {
         self.markerFinder = MarkerFinder(markersManager: markersManager)
         
         // Initialize tools
-        self.textTool = NewTextPointerTool(
+        self.textTool = TextPointerTool(
             color: toolsManager.selectedColor,
             markersManager: markersManager
         )
-        self.freehandTool = NewFreehandPointerTool(
+        self.freehandTool = FreehandPointerTool(
             color: toolsManager.selectedColor,
             markersManager: markersManager
         )
-        self.lineTool = NewLinePointerTool(
+        self.lineTool = LinePointerTool(
             color: toolsManager.selectedColor,
             markersManager: markersManager
         )
-        self.arrowTool = NewArrowPointerTool(
+        self.arrowTool = ArrowPointerTool(
             color: toolsManager.selectedColor,
             markersManager: markersManager
         )
-        self.selectionTool = NewSelectionTool(
+        self.selectionTool = SelectionTool(
             markerFinder: markerFinder
         )
         
@@ -197,7 +197,7 @@ class EventManager: ObservableObject {
     }
     
     /// Get the current active tool for Canvas observation
-    var currentActiveTool: NewPointerTool {
+    var currentActiveTool: PointerTool {
         return currentTool
     }
     

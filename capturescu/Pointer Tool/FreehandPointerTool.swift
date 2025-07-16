@@ -1,5 +1,5 @@
 //
-//  NewFreehandPointerTool.swift
+//  FreehandPointerTool.swift
 //  capturescu
 //
 //  Created by Dragos Tudorache
@@ -8,7 +8,7 @@
 import Foundation
 import SwiftUI
 
-@Observable class NewFreehandPointerTool: NewPointerTool {
+@Observable class FreehandPointerTool: PointerTool {
     let toolName = PointerToolName.FreehandPointer
     
     private var markerColor: MarkerColor

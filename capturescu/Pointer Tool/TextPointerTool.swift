@@ -1,5 +1,5 @@
 //
-//  NewTextPointerTool.swift
+//  TextPointerTool.swift
 //  capturescu
 //
 //  Created by Dragos Tudorache
@@ -8,7 +8,7 @@
 import Foundation
 import SwiftUI
 
-@Observable class NewTextPointerTool: NewPointerTool {
+@Observable class TextPointerTool: PointerTool {
     let toolName = PointerToolName.TextPointer
     let needsAccessoryView = true
     

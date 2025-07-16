@@ -1,5 +1,5 @@
 //
-//  NewDrawingSurfaceView.swift
+//  DrawingSurfaceView.swift
 //  capturescu
 //
 //  Created by Dragos Tudorache
@@ -8,7 +8,7 @@
 import Foundation
 import SwiftUI
 
-struct NewDrawingSurfaceView: View {
+struct DrawingSurfaceView: View {
   var capturedImage: CapturedPasteboardImage?
 
   @EnvironmentObject var toolsManager: ToolsManager
@@ -76,14 +76,18 @@ struct NewDrawingSurfaceView: View {
     .onChange(of: toolsManager.selectedColor) { newColor in
       eventManager.updateToolColor(newColor)
     }
+    .onKeyPress(.delete) {
+      eventManager.handleKeyboardEvent(.delete)
+      return .handled
+    }
+    .onKeyPress(.escape) {
+      eventManager.handleKeyboardEvent(.escape)
+      return .handled
+    }
   }
 
   private func setupEventManager() {
-    eventManager.updateManagers(
-      markersManager: markersManager,
-      toolsManager: toolsManager
-    )
-    // Sync current tool selection
+    // Sync current tool selection with the already-configured EventManager
     eventManager.handleCurrentToolChange()
   }
 

@@ -1,5 +1,5 @@
 //
-//  NewSelectionTool.swift
+//  SelectionTool.swift
 //  capturescu
 //
 //  Created by Dragos Tudorache
@@ -8,7 +8,7 @@
 import Foundation
 import SwiftUI
 
-@Observable class NewSelectionTool: NewPointerTool {
+@Observable class SelectionTool: PointerTool {
     let toolName = PointerToolName.SelectionPointer
     
     private let markerFinder: MarkerFinder

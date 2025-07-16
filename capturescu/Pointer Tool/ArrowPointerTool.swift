@@ -1,5 +1,5 @@
 //
-//  NewArrowPointerTool.swift
+//  ArrowPointerTool.swift
 //  capturescu
 //
 //  Created by Dragos Tudorache
@@ -8,7 +8,7 @@
 import Foundation
 import SwiftUI
 
-@Observable class NewArrowPointerTool: NewPointerTool {
+@Observable class ArrowPointerTool: PointerTool {
     let toolName = PointerToolName.ArrowPointer
     
     private var markerColor: MarkerColor

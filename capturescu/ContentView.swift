@@ -25,7 +25,6 @@ struct CapturedPasteboardImage {
 struct ContentView: View, KeyboardCommandResponder {
     @EnvironmentObject var markersManager: MarkersManager
     @EnvironmentObject var toolsManager: ToolsManager
-    @EnvironmentObject var eventManager: EventManager
     @ObservedObject private var windowSizeManager = WindowSizeManager.shared
 
     @State var capturedImage: CapturedPasteboardImage?
@@ -40,7 +39,7 @@ struct ContentView: View, KeyboardCommandResponder {
 
             ZStack(alignment: .center) {
 //                DrawingSurfaceView(capturedImage: capturedImage)
-                NewDrawingSurfaceView(capturedImage: capturedImage)
+                DrawingSurfaceView(capturedImage: capturedImage)
                     .background(GeometryGetter(rect: $drawingSurfaceBounds))
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .onAppear(perform: {
@@ -87,10 +86,7 @@ struct ContentView: View, KeyboardCommandResponder {
             toolsManager.selectTool(named: PointerToolName.TextPointer)
             
         case .selectSelectionTool:
-            eventManager.switchTool(to: .selectionTool)
-            
-        case .deleteMarker:
-            markersManager.deleteSelectedMarker()
+            toolsManager.selectTool(named: .SelectionPointer)
             
         case .undo:
             HistoryManager.shared.undo()
