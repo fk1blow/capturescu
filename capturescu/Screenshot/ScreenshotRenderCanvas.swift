@@ -1,5 +1,5 @@
 //
-//  CaptureScreenshotCanvas.swift
+//  ScreenshotRenderCanvas.swift
 //  capturescu
 //
 //  Created by Dragos Tudorache
@@ -8,7 +8,7 @@
 import Foundation
 import SwiftUI
 
-struct CaptureScreenshotCanvas: View {
+struct ScreenshotRenderCanvas: View {
     var capturedBounds: CGRect = .init()
     var capturedImage: CapturedPasteboardImage?
     var capturedMarkers: [Marker]

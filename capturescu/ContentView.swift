@@ -152,7 +152,7 @@ struct ContentView: View, KeyboardCommandResponder {
         )
 
         let renderer = ImageRenderer(
-            content: CaptureScreenshotCanvas(
+            content: ScreenshotRenderCanvas(
                 capturedBounds: markersBoundingBox.bounds,
                 capturedImage: capturedImage,
                 capturedMarkers: markersManager.markers
