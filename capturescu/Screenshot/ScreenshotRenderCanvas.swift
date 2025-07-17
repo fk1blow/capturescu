@@ -15,52 +15,55 @@ struct ScreenshotRenderCanvas: View {
 
     var body: some View {
         Canvas { ctx, _ in
-            if self.capturedImage != nil {
-                let x = self.capturedImage!.position.x
-                let y = self.capturedImage!.position.y
+            // Draw image in capture coordinate system
+            if let capturedImage = self.capturedImage {
+                // In capture coordinate system, we need to position the image correctly
+                // The captured bounds represent the content area we're capturing
                 
-                // Get the screen scale to handle Retina displays properly (same as DrawingSurfaceView)
-                let screenScale = NSScreen.main?.backingScaleFactor ?? 1.0
+                // Calculate image position in capture coordinates
+                let imagePositionInCapture: CGPoint
+                let imageSize: CGSize
                 
-                // Render at actual pixel size (1:1 mapping) with user scale applied
-                // Display images at their native pixel size without screen scale conversion
-                let width = CGFloat(self.capturedImage!.image.width) * self.capturedImage!.scale
-                let height = CGFloat(self.capturedImage!.image.height) * self.capturedImage!.scale
+                if capturedMarkers.isEmpty {
+                    // Image-only: position at (0,0) with natural size for no blur
+                    imagePositionInCapture = CGPoint(x: 0, y: 0)
+                    // Use natural size (original pixels × HiDPI scale only) to avoid blur
+                    imageSize = capturedImage.naturalSize
+                } else {
+                    // Mixed content: transform display position to capture position
+                    imagePositionInCapture = CGPoint(
+                        x: capturedImage.position.x - capturedBounds.minX,
+                        y: capturedImage.position.y - capturedBounds.minY
+                    )
+                    // Use display size for mixed content
+                    imageSize = capturedImage.displaySize
+                }
                 
-
-                // Calculate the distance between the original canvas x,y and the annotation bounds x,y
-                // The "bounding box" represents a rectangle, smaller or having the same size as
-                // the drawing/annotation canvas, which includes ONLY the points(min,max x/y)
-                // drawn/annotated on the canvas, disregarding the canvas' original size
-                // 
-                // CRITICAL: Use exact pixel positioning to match bounding box calculation
-                let dx = x - capturedBounds.minX
-                let dy = y - capturedBounds.minY
-
+                // Draw image at natural size for capture
+                // Use the inverse of hiDPIScale for proper rendering
+                let renderScale = 1.0 / capturedImage.hiDPIScale
                 ctx.draw(
                     Image(
-                        self.capturedImage!.image,
-                        scale: 1.0, // Use 1.0 scale to match pixel-size rendering
+                        capturedImage.image,
+                        scale: renderScale,
                         label: Text("")
                     ),
                     in: CGRect(
-                        origin: CGPoint(x: dx, y: dy),
-                        size: CGSize(width: width, height: height)
+                        origin: imagePositionInCapture,
+                        size: imageSize
                     )
                 )
             }
 
-            for var marker in capturedMarkers {
-                // Use the same offset calculation as the image to ensure perfect alignment
-                // Use exact coordinates to match bounding box calculation
-                let offsetX = capturedBounds.minX
-                let offsetY = capturedBounds.minY
-                marker.offsetMarkerBy(dx: offsetX * -1, dy: offsetY * -1)
+            // Draw markers in capture coordinate system
+            // Note: markers are already transformed to capture coordinates by the caller
+            for marker in capturedMarkers {
                 marker.draw(onto: ctx)
             }
         }
         .frame(width: capturedBounds.width, 
                height: capturedBounds.height)
+        .drawingGroup() // Match display Canvas rendering for consistent quality
         // .border(.black)
         .background(Color(hex: "#282828"))
     }

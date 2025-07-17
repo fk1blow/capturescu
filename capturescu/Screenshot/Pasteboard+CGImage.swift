@@ -8,9 +8,10 @@
 import AppKit
 import Foundation
 import UniformTypeIdentifiers
+import ImageIO
 
 extension NSPasteboard {
-    static func getImage() -> (image: CGImage, isCapturescuRendered: Bool)? {
+    static func getImage() -> (image: CGImage, isCapturescuRendered: Bool, imageSource: CGImageSource?)? {
         let pasteboard = NSPasteboard.general
         
         // Try PNG first (where we store our metadata)
@@ -29,10 +30,9 @@ extension NSPasteboard {
                         return nil
                     }
                     
-                    print("DEBUG DETECTION: No scaling approach - using image exactly as-is (\(image.width)x\(image.height))")
+                    print("DEBUG DETECTION: PNG image (\(image.width)x\(image.height)) - preserving source for metadata")
                     
-                    // NO-SCALING APPROACH: Always use image exactly as pasted, no modifications
-                    return (image: image, isCapturescuRendered: false)
+                    return (image: image, isCapturescuRendered: false, imageSource: source)
                 }
             }
         }
@@ -53,10 +53,9 @@ extension NSPasteboard {
                         return nil
                     }
                     
-                    print("DEBUG DETECTION (TIFF): No scaling approach - using image exactly as-is (\(image.width)x\(image.height))")
+                    print("DEBUG DETECTION (TIFF): TIFF image (\(image.width)x\(image.height)) - preserving source for metadata")
                     
-                    // NO-SCALING APPROACH: Always use image exactly as pasted, no modifications
-                    return (image: image, isCapturescuRendered: false)
+                    return (image: image, isCapturescuRendered: false, imageSource: source)
                 }
             }
         }
@@ -66,7 +65,7 @@ extension NSPasteboard {
     
     
 
-    static func addImage(capture: CGImage?, originalImageSize: CGSize? = nil) {
+    static func addImage(capture: CGImage?, originalHiDPIScale: CGFloat = 1.0) {
         // Get the CGImage
         guard let image = capture else { return }
         
@@ -76,25 +75,52 @@ extension NSPasteboard {
             return
         }
 
-        // NO-SCALING APPROACH: Store exact pixel data without modification
-        // External apps will handle their own display scaling requirements
-        print("DEBUG CLIPBOARD: Adding image at exact size (\(image.width)x\(image.height)) - no scaling")
+        // Calculate DPI to preserve HiDPI information
+        let dpiValue = 72.0 / originalHiDPIScale // Convert scale back to DPI
+        
+        print("DEBUG CLIPBOARD: Adding image at exact size (\(image.width)x\(image.height)) with DPI=\(dpiValue)")
         
         // Create the pasteboard
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
 
-        // Store exact image data without any scaling or modification
+        // Store exact image data with preserved DPI metadata
         let bitmapRep = NSBitmapImageRep(cgImage: image)
         
-        // Add PNG format with original image data
-        if let pngData = bitmapRep.representation(using: .png, properties: [:]) {
+        // Create properties dictionary with DPI information
+        let imageProperties: [NSBitmapImageRep.PropertyKey: Any] = [
+            .compressionFactor: 1.0,
+            .ditherTransparency: false
+        ]
+        
+        // Add PNG format with DPI metadata
+        if let pngData = bitmapRep.representation(using: .png, properties: imageProperties) {
             guard pngData.count > 0 && pngData.count < 100_000_000 else { return }
-            pasteboard.setData(pngData, forType: .png)
+            
+            // Create mutable data for the destination
+            let mutableData = NSMutableData()
+            
+            // Create image source from the PNG data
+            if let source = CGImageSourceCreateWithData(pngData as CFData, nil),
+               let destination = CGImageDestinationCreateWithData(mutableData, kUTTypePNG, 1, nil) {
+                
+                let metadata: [CFString: Any] = [
+                    kCGImagePropertyDPIWidth: dpiValue,
+                    kCGImagePropertyDPIHeight: dpiValue
+                ]
+                
+                CGImageDestinationAddImageFromSource(destination, source, 0, metadata as CFDictionary)
+                if CGImageDestinationFinalize(destination) {
+                    pasteboard.setData(mutableData as Data, forType: .png)
+                }
+            } else {
+                // Fallback: store without metadata
+                pasteboard.setData(pngData, forType: .png)
+            }
         }
         
         // Add TIFF format for broader compatibility
-        if let tiffData = bitmapRep.representation(using: .tiff, properties: [:]) {
+        if let tiffData = bitmapRep.representation(using: .tiff, properties: imageProperties) {
             guard tiffData.count > 0 && tiffData.count < 100_000_000 else { return }
             pasteboard.setData(tiffData, forType: .tiff)
         }

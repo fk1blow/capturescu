@@ -54,21 +54,18 @@ class WindowSizeManager: ObservableObject {
     // Calculate optimal window size based on image dimensions
     func calculateWindowSize(for imageSize: CGSize) -> CGSize {
         let maxSize = maxWindowSize
-        let screenScale = NSScreen.main?.backingScaleFactor ?? 1.0
         
-        // Convert pixel dimensions to points
-        let imageSizeInPoints = CGSize(
-            width: imageSize.width / screenScale,
-            height: imageSize.height / screenScale
-        )
+        // Work with actual pixel dimensions - don't convert to points
+        // Images already have their natural size after HiDPI scaling
+        let imagePixelSize = imageSize
         
         // Calculate available space for image (accounting for padding and toolbar)
         let availableWidth = maxSize.width - LayoutConstants.totalHorizontalPadding
         let availableHeight = maxSize.height - LayoutConstants.totalVerticalSpace
         
-        // Start with the actual image size in points (no upscaling)
-        var imageWidth = imageSizeInPoints.width
-        var imageHeight = imageSizeInPoints.height
+        // Start with the actual image size (no upscaling)
+        var imageWidth = imagePixelSize.width
+        var imageHeight = imagePixelSize.height
         
         // Only scale down if image is larger than available space
         if imageWidth > availableWidth || imageHeight > availableHeight {
@@ -94,26 +91,23 @@ class WindowSizeManager: ObservableObject {
     // Calculate image scale factor based on window constraints
     func calculateImageScale(for imageSize: CGSize) -> CGFloat {
         let maxSize = maxWindowSize
-        let screenScale = NSScreen.main?.backingScaleFactor ?? 1.0
         
-        // Convert pixel dimensions to points
-        let imageSizeInPoints = CGSize(
-            width: imageSize.width / screenScale,
-            height: imageSize.height / screenScale
-        )
+        // Work with actual pixel dimensions - don't convert to points
+        // Images already have their natural size after HiDPI scaling
+        let imagePixelSize = imageSize
         
         // Calculate available space for image (accounting for padding and toolbar)
         let availableWidth = maxSize.width - LayoutConstants.totalHorizontalPadding
         let availableHeight = maxSize.height - LayoutConstants.totalVerticalSpace
         
         // If image fits within available space, no scaling needed (keep at actual size)
-        if imageSizeInPoints.width <= availableWidth && imageSizeInPoints.height <= availableHeight {
+        if imagePixelSize.width <= availableWidth && imagePixelSize.height <= availableHeight {
             return 1.0
         }
         
         // Only scale down if image is larger than available space
-        let widthScale = availableWidth / imageSizeInPoints.width
-        let heightScale = availableHeight / imageSizeInPoints.height
+        let widthScale = availableWidth / imagePixelSize.width
+        let heightScale = availableHeight / imagePixelSize.height
         return min(widthScale, heightScale, 1.0) // Never scale above 1.0 (no upscaling)
     }
     

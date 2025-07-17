@@ -12,12 +12,21 @@ struct CapturedPasteboardImage {
     var image: CGImage
     var position: CGPoint
     var scale: CGFloat = 1.0
+    var hiDPIScale: CGFloat = 1.0  // Preserve original HiDPI scale for natural size rendering
     
     // Computed property for display size in points
     var displaySize: CGSize {
         return CGSize(
             width: CGFloat(image.width) * scale,
             height: CGFloat(image.height) * scale
+        )
+    }
+    
+    // Computed property for natural size (original pixels × HiDPI scale only)
+    var naturalSize: CGSize {
+        return CGSize(
+            width: CGFloat(image.width) * hiDPIScale,
+            height: CGFloat(image.height) * hiDPIScale
         )
     }
 }
@@ -29,6 +38,24 @@ struct ContentView: View, KeyboardCommandResponder {
 
     @State var capturedImage: CapturedPasteboardImage?
     @State var drawingSurfaceBounds: CGRect = .init()
+    
+    // HiDPI detection helper - metadata only approach
+    private func detectHiDPIScale(from imageSource: CGImageSource) -> CGFloat {
+        guard let properties = CGImageSourceCopyPropertiesAtIndex(imageSource, 0, nil) as? [CFString: Any] else {
+            return 1.0
+        }
+        
+        // Check for DPI information - macOS screenshots typically have 144 DPI for Retina
+        if let dpiX = properties[kCGImagePropertyDPIWidth] as? CGFloat {
+            let scaleFactor = 72.0 / dpiX  // 72 DPI = 1.0 scale, 144 DPI = 0.5 scale
+            print("DEBUG DISPLAY: Found DPI=\(dpiX), display scale=\(scaleFactor)")
+            return scaleFactor
+        }
+        
+        // No DPI metadata = display at natural size (1:1 scale)
+        print("DEBUG DISPLAY: No DPI metadata found, using 1.0 scale")
+        return 1.0
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -100,44 +127,6 @@ struct ContentView: View, KeyboardCommandResponder {
     }
     
     
-    private func calculateRendererScale(
-        capturedImage: CapturedPasteboardImage?,
-        markersBounds: CGRect
-    ) -> CGFloat? {
-        // NO-SCALING APPROACH: Always render at 1.0 scale to preserve exact pixel data
-        // External apps will handle their own display scaling as needed
-        return 1.0
-    }
-    
-    
-
-    private func detectScreenshotScale(imageSize: CGSize) -> CGFloat {
-        // Get current screen info for Retina detection
-        guard let screen = NSScreen.main else { return 1.0 }
-        
-        let screenPixelSize = CGSize(
-            width: screen.frame.width * screen.backingScaleFactor,
-            height: screen.frame.height * screen.backingScaleFactor
-        )
-        
-        // Check if image dimensions suggest a Retina screenshot
-        // Screenshots are often exactly 2x the logical screen size
-        let tolerance: CGFloat = 0.1 // 10% tolerance for different screenshot sizes
-        
-        let isLikelyRetinaScreenshot = 
-            screen.backingScaleFactor == 2.0 && // Retina display
-            (imageSize.width > screen.frame.width * 1.5) && // Significantly larger than logical size
-            (imageSize.width <= screenPixelSize.width * (1.0 + tolerance)) && // Within screen bounds
-            (imageSize.height <= screenPixelSize.height * (1.0 + tolerance))
-        
-        if isLikelyRetinaScreenshot {
-            print("DEBUG DETECTION: Detected likely Retina screenshot - using 0.5 display scale")
-            return 0.5 // Display at half size to match logical screen dimensions
-        }
-        
-        print("DEBUG DETECTION: Regular image - using 1.0 display scale")
-        return 1.0
-    }
 
     private func handlePasteAction() {
         guard let imageData = NSPasteboard.getImage() else {
@@ -145,49 +134,49 @@ struct ContentView: View, KeyboardCommandResponder {
         }
         
         let image = imageData.image
-        let isCapturescuRendered = imageData.isCapturescuRendered
-        
         let imageSize = CGSize(width: image.width, height: image.height)
         
-        // Debug logging to understand the scaling issue
-        print("DEBUG PASTE: imageSize=\(imageSize), isCapturescuRendered=\(isCapturescuRendered)")
-        
-        // Validate image dimensions
-        guard imageSize.width > 0 && imageSize.height > 0 else {
-            return
+        // Use metadata-based HiDPI detection only
+        var hiDPIScale: CGFloat = 1.0
+        if let imageSource = imageData.imageSource {
+            hiDPIScale = detectHiDPIScale(from: imageSource)
         }
+        // If no imageSource, default to 1.0 scale (display at natural size)
         
-        // Detect if this is likely a Retina screenshot and adjust display scale
-        let detectedDisplayScale = detectScreenshotScale(imageSize: imageSize)
+        // Calculate display scale for window fitting
+        let windowScale = windowSizeManager.calculateImageScale(for: imageSize)
         
-        // Calculate scale factor for the image using the detected display scale
-        let scale = windowSizeManager.calculateImageScale(for: imageSize) * detectedDisplayScale
+        // Combine scales for final display scale
+        let finalScale = windowScale * hiDPIScale
         
-        // Calculate new window size based on scaled image
+        // Calculate window size
         let windowSize = windowSizeManager.calculateWindowSize(for: imageSize)
         
-        // Resize the window to fit the image with completion callback
+        // Resize window and position image
         windowSizeManager.resizeWindow(to: windowSize) {
-            // Calculate scaled size in points
-            // External images should be displayed at their native pixel size without screen scale conversion
-            let scaledSize = CGSize(
-                width: imageSize.width * scale,
-                height: imageSize.height * scale
-            )
-            
             // Calculate available space for image (excluding padding and toolbar)
             let availableWidth = windowSize.width - LayoutConstants.totalHorizontalPadding
             let availableHeight = windowSize.height - LayoutConstants.totalVerticalSpace
+            
+            // Calculate scaled size
+            let scaledSize = CGSize(
+                width: imageSize.width * finalScale,
+                height: imageSize.height * finalScale
+            )
             
             // Position image in available space with padding
             let x = LayoutConstants.imagePadding + (availableWidth - scaledSize.width) / 2
             let y = LayoutConstants.imagePadding + (availableHeight - scaledSize.height) / 2
             
-            capturedImage = CapturedPasteboardImage(
+            self.capturedImage = CapturedPasteboardImage(
                 image: image,
                 position: CGPoint(x: x, y: y),
-                scale: scale
+                scale: finalScale,
+                hiDPIScale: hiDPIScale
             )
+            
+            print("DEBUG PASTE: imageSize=\(imageSize), hiDPIScale=\(hiDPIScale), windowScale=\(windowScale), finalScale=\(finalScale), position=\(CGPoint(x: x, y: y))")
+            print("DEBUG PASTE: windowSize=\(windowSize), availableSize=\(availableWidth)x\(availableHeight), scaledSize=\(scaledSize)")
         }
     }
 
@@ -197,42 +186,65 @@ struct ContentView: View, KeyboardCommandResponder {
             return
         }
         
-        let markersBoundingBox = CaptureScreenshotBounds(
-            paths: markersManager.markersPaths(), capturedImage: capturedImage
+        // Calculate capture bounds using improved logic
+        let captureBounds = calculateCaptureBounds(
+            image: capturedImage,
+            markers: markersManager.markers
         )
-
+        
+        // Transform markers to capture coordinates
+        let transformedMarkers = markersManager.markers.map { marker in
+            var transformedMarker = marker
+            transformedMarker.offsetMarkerBy(dx: -captureBounds.minX, dy: -captureBounds.minY)
+            return transformedMarker
+        }
+        
+        // Create renderer with capture coordinate system
         let renderer = ImageRenderer(
             content: ScreenshotRenderCanvas(
-                capturedBounds: markersBoundingBox.bounds,
+                capturedBounds: captureBounds,
                 capturedImage: capturedImage,
-                capturedMarkers: markersManager.markers
+                capturedMarkers: transformedMarkers
             )
         )
         
-        // Calculate and set the renderer scale to preserve original image dimensions
-        let rendererScale = calculateRendererScale(
-            capturedImage: capturedImage,
-            markersBounds: markersBoundingBox.bounds
+        // Configure renderer for high-quality output
+        // Use screen scale for crisp rendering, but capture bounds are already at display size
+        let screenScale = NSScreen.main?.backingScaleFactor ?? 1.0
+        renderer.scale = screenScale
+        renderer.proposedSize = ProposedViewSize(
+            width: captureBounds.width,
+            height: captureBounds.height
         )
-        
-        guard let validScale = rendererScale else {
-            return
-        }
-        
-        renderer.scale = validScale
         
         // Attempt to render the image with error handling
         guard let capture = renderer.cgImage else {
             return
         }
         
-        // Pass the DISPLAY size for proper metadata storage (not rendered size)
-        // This ensures we can restore the correct display size when pasting back
-        let actualOriginalSize = capturedImage.map { capturedImg in
-            CGSize(width: capturedImg.image.width, height: capturedImg.image.height)
+        // Store image to clipboard with preserved HiDPI scale
+        let originalHiDPIScale = capturedImage?.hiDPIScale ?? 1.0
+        NSPasteboard.addImage(capture: capture, originalHiDPIScale: originalHiDPIScale)
+    }
+    
+    // Improved capture bounds calculation
+    private func calculateCaptureBounds(image: CapturedPasteboardImage?, markers: [Marker]) -> CGRect {
+        if markers.isEmpty {
+            // Image-only capture: create tight bounds around natural image size
+            guard let image = image else { return CGRect.zero }
+            // Use natural size (original pixels × HiDPI scale only) for tight bounds
+            return CGRect(
+                x: 0,
+                y: 0,
+                width: image.naturalSize.width,
+                height: image.naturalSize.height
+            )
+        } else {
+            // Mixed content: use existing CaptureScreenshotBounds logic
+            let markerPaths = markersManager.markersPaths()
+            let bounds = CaptureScreenshotBounds(paths: markerPaths, capturedImage: image)
+            return bounds.bounds
         }
-        
-        NSPasteboard.addImage(capture: capture, originalImageSize: actualOriginalSize)
     }
 
 }

@@ -8,6 +8,9 @@
 import Foundation
 import SwiftUI
 
+// DEPRECATED: This class is deprecated in favor of CaptureCoordinateSystem
+// Kept for backward compatibility, but should be removed in future versions
+
 struct CaptureScreenshotBounds {
     var bounds = CGRect()
     
@@ -18,10 +21,6 @@ struct CaptureScreenshotBounds {
     var position: CGPoint {
         return CGPoint(x: bounds.minX + (bounds.width / 2), y: bounds.minY + (bounds.height / 2))
     }
-    
-    // init(bounds: CGRect[]) {
-    //
-    // }
     
     init(paths: [Path], capturedImage: CapturedPasteboardImage?) {
         self.bounds = calculate(paths: paths, capturedImage: capturedImage)
