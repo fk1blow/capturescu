@@ -176,8 +176,10 @@ struct WindowStyleModifier: ViewModifier {
                             window.isMovableByWindowBackground = false
                             window.styleMask.insert([.closable, .miniaturizable, .resizable])
                             
-                            // Set initial window size
-                            WindowSizeManager.shared.setInitialWindowSize()
+                            // Set initial window size only if no pasteboard content
+                            if NSPasteboard.getImage() == nil {
+                                WindowSizeManager.shared.setInitialWindowSize()
+                            }
                         }
                     }
             })

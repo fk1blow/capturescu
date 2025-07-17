@@ -70,10 +70,8 @@ struct ContentView: View, KeyboardCommandResponder {
                     .background(GeometryGetter(rect: $drawingSurfaceBounds))
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .onAppear(perform: {
-                        // Re-enabled after fixing race condition issues
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                            handlePasteAction()
-                        }
+                        // Handle paste action immediately if content exists
+                        handlePasteAction()
                     })
 
                 ToolbarView()
