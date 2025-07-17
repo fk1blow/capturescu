@@ -103,17 +103,41 @@ Capturescu is a Swift/SwiftUI macOS native application for managing and annotati
 
 **Screenshot Capture (`Screenshot/`)**
 - `CaptureScreenshotBounds`: Calculates bounding box for capture
-- `CaptureScreenshotCanvas`: Renders final screenshot
-- `Pasteboard+CGImage`: Handles pasteboard image operations
+- `ScreenshotRenderCanvas`: Renders final screenshot with dual coordinate system
+- `Pasteboard+CGImage`: Handles pasteboard image operations with format support
 
-### 7. Hit Detection
+### 7. HiDPI/Image Handling System
+
+**HiDPI Detection & Scaling (`ContentView.swift`)**
+- **Metadata-based Detection**: Reads DPI information from image metadata (144 DPI = 0.5 scale)
+- **Multi-format Support**: Handles PNG, TIFF, JPEG, HEIC, WebP with unified processing
+- **Fallback Mechanisms**: Multiple detection methods with dimension-based heuristics
+- **Performance Caching**: Metadata detection results cached for repeated operations
+
+**Dual Coordinate System**
+- **Display Coordinates**: How images appear in the app UI (`displaySize`)
+- **Capture Coordinates**: How images are rendered for clipboard export
+- **Consistent Scaling**: Uses `displaySize` throughout pipeline to prevent double-scaling
+
+**Image Format Support (`Pasteboard+CGImage.swift`)**
+- **Multiple Formats**: PNG (preferred), TIFF, JPEG, HEIC, WebP
+- **Metadata Preservation**: DPI information preserved through copy/paste cycles
+- **Format Detection**: Automatic fallback chain for unsupported formats
+- **Validation**: Size limits and dimension checking for security
+
+**Multi-Monitor Support (`WindowStyleModifier.swift`)**
+- **Per-Screen Scaling**: Window sizing adapts to current monitor DPI
+- **Dynamic Adjustment**: Automatic recalculation when moving between displays
+- **Smooth Startup**: Conditional window resizing prevents shaking
+
+### 8. Hit Detection
 
 **Hit Detection System (`hit detection/`)**
 - `HitDetection`: Core hit testing functionality
 - `BoundingBox`: Geometric calculations for marker bounds
 - `MarkerHighlight`: Visual feedback for selected markers
 
-### 8. Command Pattern & History
+### 9. Command Pattern & History
 
 **HistoryManager (`HistoryManager.swift`)**
 - Manages undo/redo operations with command pattern
@@ -141,9 +165,16 @@ Capturescu is a Swift/SwiftUI macOS native application for managing and annotati
 - **Highlighting**: Visual feedback for hovered/selected markers
 
 ### Canvas Operations
-- **Image Import**: Paste images from clipboard
-- **Screenshot Export**: Copy annotated content to clipboard
+- **Image Import**: Paste images from clipboard with automatic HiDPI detection
+- **Screenshot Export**: Copy annotated content to clipboard with metadata preservation
 - **Keyboard Shortcuts**: Cmd+C (copy), Cmd+V (paste)
+
+### HiDPI & Image Quality
+- **Natural Size Rendering**: macOS screenshots display at correct natural size
+- **Metadata Preservation**: DPI information maintained through copy/paste cycles
+- **Multi-Format Support**: PNG, TIFF, JPEG, HEIC, WebP with automatic format detection
+- **Quality Consistency**: No blur or size changes across multiple copy operations
+- **Multi-Monitor**: Automatic adaptation to different screen DPI settings
 
 ## Technical Details
 
@@ -175,11 +206,21 @@ Capturescu is a Swift/SwiftUI macOS native application for managing and annotati
 - No manual Canvas invalidation needed
 - Scalable pattern that works with any number of tools
 
+### HiDPI/Image Processing
+- **Metadata-Based Detection**: Uses `kCGImagePropertyDPIWidth` for accurate scale detection
+- **Dual Coordinate System**: Separates display coordinates from capture coordinates
+- **Consistent Sizing**: Uses `displaySize` throughout to prevent double-scaling
+- **Format Abstraction**: Unified handling of multiple image formats with fallback chain
+- **Performance Caching**: Metadata detection results cached with automatic cleanup
+- **Error Resilience**: Multiple fallback mechanisms for corrupted or missing metadata
+
 ## Development Notes
 
 ### Current Status
 - **Completed**: Event-driven architecture with Canvas synchronization
+- **Completed**: HiDPI/image handling system with metadata preservation
 - **Working**: Freehand, Line, Arrow tools with real-time preview
+- **Working**: Multi-format image support with automatic scaling
 - **In Progress**: Text tool refinement and marker editing
 - **Todo**: Keyboard shortcut system improvements
 
@@ -190,6 +231,8 @@ Capturescu is a Swift/SwiftUI macOS native application for managing and annotati
 - **Scalable tool system**: Adding new tools requires minimal changes
 - **Reactive state management**: SwiftUI handles all UI updates automatically
 - **Physical metaphor**: "Pen and paper" design feels natural to users
+- **HiDPI robustness**: Metadata-based scaling with multiple fallback mechanisms
+- **Format flexibility**: Unified image handling across multiple formats
 
 ### Design Principles
 - **Pen and Paper Metaphor**: Canvas observes what's being drawn on it
