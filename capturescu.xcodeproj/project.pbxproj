@@ -45,7 +45,7 @@
 		2B5A7B3D2E26EB880052744A /* PointerTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B5A7B342E26EB880052744A /* PointerTool.swift */; };
 		2B5A7B3E2E26EB880052744A /* TextPointerTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B5A7B362E26EB880052744A /* TextPointerTool.swift */; };
 		2B5A7B3F2E26EB880052744A /* SelectionTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B5A7B352E26EB880052744A /* SelectionTool.swift */; };
-		2B5B85682CADDFE10028CE00 /* CaptureScreenshotCanvas.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B5B85672CADDFE10028CE00 /* CaptureScreenshotCanvas.swift */; };
+		2B5B85682CADDFE10028CE00 /* ScreenshotRenderCanvas.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B5B85672CADDFE10028CE00 /* ScreenshotRenderCanvas.swift */; };
 		2B5B856A2CADE17C0028CE00 /* View+SaveSize.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B5B85692CADE17C0028CE00 /* View+SaveSize.swift */; };
 		2B60BFD72CC4A8D00011E38B /* Color+Inverse.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B60BFD62CC4A8D00011E38B /* Color+Inverse.swift */; };
 		2B60BFD92CC525F40011E38B /* Color+Contrast.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B60BFD82CC525F40011E38B /* Color+Contrast.swift */; };
@@ -113,7 +113,7 @@
 		2B5A7B342E26EB880052744A /* PointerTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PointerTool.swift; sourceTree = "<group>"; };
 		2B5A7B352E26EB880052744A /* SelectionTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectionTool.swift; sourceTree = "<group>"; };
 		2B5A7B362E26EB880052744A /* TextPointerTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextPointerTool.swift; sourceTree = "<group>"; };
-		2B5B85672CADDFE10028CE00 /* CaptureScreenshotCanvas.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureScreenshotCanvas.swift; sourceTree = "<group>"; };
+		2B5B85672CADDFE10028CE00 /* ScreenshotRenderCanvas.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenshotRenderCanvas.swift; sourceTree = "<group>"; };
 		2B5B85692CADE17C0028CE00 /* View+SaveSize.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "View+SaveSize.swift"; sourceTree = "<group>"; };
 		2B60BFD62CC4A8D00011E38B /* Color+Inverse.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+Inverse.swift"; sourceTree = "<group>"; };
 		2B60BFD82CC525F40011E38B /* Color+Contrast.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+Contrast.swift"; sourceTree = "<group>"; };
@@ -245,7 +245,7 @@
 			isa = PBXGroup;
 			children = (
 				2B9004AC2CB2029F00E240D5 /* Pasteboard+CGImage.swift */,
-				2B5B85672CADDFE10028CE00 /* CaptureScreenshotCanvas.swift */,
+				2B5B85672CADDFE10028CE00 /* ScreenshotRenderCanvas.swift */,
 				2B9004AE2CB20DA900E240D5 /* CaptureScreenshotBounds.swift */,
 			);
 			path = Screenshot;
