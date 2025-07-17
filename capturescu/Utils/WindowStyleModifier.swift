@@ -39,21 +39,24 @@ class WindowSizeManager: ObservableObject {
     
     private init() {}
     
-    // Get the main screen size with some padding for safety
-    private var maxWindowSize: CGSize {
-        guard let screen = NSScreen.main else {
+    // Get the current screen size with some padding for safety
+    private func maxWindowSize(for window: NSWindow?) -> CGSize {
+        // Use the screen containing the window, fallback to main screen
+        let screen = window?.screen ?? NSScreen.main
+        guard let currentScreen = screen else {
             return CGSize(width: 1200, height: 800) // fallback
         }
         // Leave some padding (100pts) from screen edges
         return CGSize(
-            width: screen.frame.width - 100,
-            height: screen.frame.height - 100
+            width: currentScreen.frame.width - 100,
+            height: currentScreen.frame.height - 100
         )
     }
     
     // Calculate optimal window size based on image dimensions
     func calculateWindowSize(for imageSize: CGSize) -> CGSize {
-        let maxSize = maxWindowSize
+        let window = NSApplication.shared.windows.first
+        let maxSize = maxWindowSize(for: window)
         
         // Work with actual pixel dimensions - don't convert to points
         // Images already have their natural size after HiDPI scaling
@@ -90,7 +93,8 @@ class WindowSizeManager: ObservableObject {
     
     // Calculate image scale factor based on window constraints
     func calculateImageScale(for imageSize: CGSize) -> CGFloat {
-        let maxSize = maxWindowSize
+        let window = NSApplication.shared.windows.first
+        let maxSize = maxWindowSize(for: window)
         
         // Work with actual pixel dimensions - don't convert to points
         // Images already have their natural size after HiDPI scaling

@@ -39,21 +39,126 @@ struct ContentView: View, KeyboardCommandResponder {
     @State var capturedImage: CapturedPasteboardImage?
     @State var drawingSurfaceBounds: CGRect = .init()
     
-    // HiDPI detection helper - metadata only approach
-    private func detectHiDPIScale(from imageSource: CGImageSource) -> CGFloat {
+    // Performance optimization: cache metadata detection results
+    private static var metadataCache: [String: CGFloat] = [:]
+    private static let cacheQueue = DispatchQueue(label: "metadata.cache", qos: .utility)
+    
+    // Generate cache key from image properties for performance optimization
+    private func generateCacheKey(from imageSource: CGImageSource) -> String? {
+        guard let image = CGImageSourceCreateImageAtIndex(imageSource, 0, nil) else { return nil }
+        let width = image.width
+        let height = image.height
+        
+        // Create a simple hash based on dimensions and basic properties
         guard let properties = CGImageSourceCopyPropertiesAtIndex(imageSource, 0, nil) as? [CFString: Any] else {
-            return 1.0
+            return "\(width)x\(height)"
+        }
+        
+        // Include DPI in cache key if available
+        if let dpi = properties[kCGImagePropertyDPIWidth] as? CGFloat {
+            return "\(width)x\(height)_\(dpi)"
+        }
+        
+        return "\(width)x\(height)"
+    }
+    
+    // HiDPI detection helper with fallback mechanisms and caching
+    private func detectHiDPIScale(from imageSource: CGImageSource) -> CGFloat {
+        // Check cache first
+        if let cacheKey = generateCacheKey(from: imageSource) {
+            if let cachedScale = Self.metadataCache[cacheKey] {
+                print("DEBUG DISPLAY: Using cached scale=\(cachedScale)")
+                return cachedScale
+            }
+        }
+        
+        guard let properties = CGImageSourceCopyPropertiesAtIndex(imageSource, 0, nil) as? [CFString: Any] else {
+            print("DEBUG DISPLAY: No properties found, using 1.0 scale")
+            return cacheAndReturn(scale: 1.0, imageSource: imageSource)
         }
         
         // Check for DPI information - macOS screenshots typically have 144 DPI for Retina
         if let dpiX = properties[kCGImagePropertyDPIWidth] as? CGFloat {
             let scaleFactor = 72.0 / dpiX  // 72 DPI = 1.0 scale, 144 DPI = 0.5 scale
-            print("DEBUG DISPLAY: Found DPI=\(dpiX), display scale=\(scaleFactor)")
-            return scaleFactor
+            
+            // Validate scale factor is reasonable
+            if scaleFactor > 0.1 && scaleFactor <= 4.0 {
+                print("DEBUG DISPLAY: Found DPI=\(dpiX), display scale=\(scaleFactor)")
+                return cacheAndReturn(scale: scaleFactor, imageSource: imageSource)
+            } else {
+                print("DEBUG DISPLAY: Invalid DPI=\(dpiX), falling back to dimension detection")
+                return cacheAndReturn(scale: detectHiDPIScaleFromDimensions(imageSource: imageSource), imageSource: imageSource)
+            }
         }
         
-        // No DPI metadata = display at natural size (1:1 scale)
-        print("DEBUG DISPLAY: No DPI metadata found, using 1.0 scale")
+        // Try alternative DPI keys
+        if let dpiY = properties[kCGImagePropertyDPIHeight] as? CGFloat {
+            let scaleFactor = 72.0 / dpiY
+            if scaleFactor > 0.1 && scaleFactor <= 4.0 {
+                print("DEBUG DISPLAY: Found DPI Height=\(dpiY), display scale=\(scaleFactor)")
+                return cacheAndReturn(scale: scaleFactor, imageSource: imageSource)
+            }
+        }
+        
+        // Check for resolution units and values
+        if let resolutionX = properties[kCGImagePropertyTIFFXResolution] as? CGFloat {
+            let scaleFactor = 72.0 / resolutionX
+            if scaleFactor > 0.1 && scaleFactor <= 4.0 {
+                print("DEBUG DISPLAY: Found TIFF X Resolution=\(resolutionX), display scale=\(scaleFactor)")
+                return cacheAndReturn(scale: scaleFactor, imageSource: imageSource)
+            }
+        }
+        
+        // Final fallback: dimension-based detection
+        print("DEBUG DISPLAY: No valid DPI metadata found, trying dimension detection")
+        let fallbackScale = detectHiDPIScaleFromDimensions(imageSource: imageSource)
+        return cacheAndReturn(scale: fallbackScale, imageSource: imageSource)
+    }
+    
+    // Cache the result and return it
+    private func cacheAndReturn(scale: CGFloat, imageSource: CGImageSource) -> CGFloat {
+        if let cacheKey = generateCacheKey(from: imageSource) {
+            Self.cacheQueue.async {
+                Self.metadataCache[cacheKey] = scale
+                // Limit cache size to prevent memory issues
+                if Self.metadataCache.count > 100 {
+                    // Remove oldest entries (simple approach)
+                    let keysToRemove = Array(Self.metadataCache.keys.prefix(20))
+                    keysToRemove.forEach { Self.metadataCache.removeValue(forKey: $0) }
+                }
+            }
+        }
+        return scale
+    }
+    
+    // Fallback: detect HiDPI from image dimensions (heuristic)
+    private func detectHiDPIScaleFromDimensions(imageSource: CGImageSource) -> CGFloat {
+        guard let image = CGImageSourceCreateImageAtIndex(imageSource, 0, nil) else {
+            print("DEBUG DISPLAY: Cannot create image for dimension detection, using 1.0 scale")
+            return 1.0
+        }
+        
+        let width = image.width
+        let height = image.height
+        
+        // Common screenshot sizes for Retina displays
+        let commonRetinaWidths: [Int] = [2880, 3024, 3360, 3840, 5120, 6016, 7680]
+        let commonRetinaHeights: [Int] = [1800, 1964, 2100, 2160, 2880, 3384, 4320]
+        
+        // If dimensions match common Retina sizes, assume 0.5 scale
+        if commonRetinaWidths.contains(width) || commonRetinaHeights.contains(height) {
+            print("DEBUG DISPLAY: Dimensions (\(width)x\(height)) suggest Retina display, using 0.5 scale")
+            return 0.5
+        }
+        
+        // If very large dimensions, likely Retina
+        if width > 2500 || height > 1500 {
+            print("DEBUG DISPLAY: Large dimensions (\(width)x\(height)) suggest Retina display, using 0.5 scale")
+            return 0.5
+        }
+        
+        // Default to natural size
+        print("DEBUG DISPLAY: Dimensions (\(width)x\(height)) suggest standard display, using 1.0 scale")
         return 1.0
     }
 
@@ -228,14 +333,14 @@ struct ContentView: View, KeyboardCommandResponder {
     // Improved capture bounds calculation
     private func calculateCaptureBounds(image: CapturedPasteboardImage?, markers: [Marker]) -> CGRect {
         if markers.isEmpty {
-            // Image-only capture: create tight bounds around natural image size
+            // Image-only capture: create tight bounds around display size
             guard let image = image else { return CGRect.zero }
-            // Use natural size (original pixels × HiDPI scale only) for tight bounds
+            // Use display size (the size it actually appears in the app) for consistent behavior
             return CGRect(
                 x: 0,
                 y: 0,
-                width: image.naturalSize.width,
-                height: image.naturalSize.height
+                width: image.displaySize.width,
+                height: image.displaySize.height
             )
         } else {
             // Mixed content: use existing CaptureScreenshotBounds logic

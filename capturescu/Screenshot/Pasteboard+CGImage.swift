@@ -10,52 +10,48 @@ import Foundation
 import UniformTypeIdentifiers
 import ImageIO
 
+// Extension to add missing pasteboard types
+extension NSPasteboard.PasteboardType {
+    static let jpeg = NSPasteboard.PasteboardType("public.jpeg")
+    static let heic = NSPasteboard.PasteboardType("public.heic")
+    static let webP = NSPasteboard.PasteboardType("public.webp")
+}
+
 extension NSPasteboard {
     static func getImage() -> (image: CGImage, isCapturescuRendered: Bool, imageSource: CGImageSource?)? {
         let pasteboard = NSPasteboard.general
         
-        // Try PNG first (where we store our metadata)
-        if let data = pasteboard.data(forType: .png), !data.isEmpty {
-            // Validate data size to prevent processing corrupt/malformed images
-            guard data.count > 0 && data.count < 100_000_000 else { // 100MB limit
-                return nil
-            }
-            
-            if let source = CGImageSourceCreateWithData(data as CFData, nil),
-               CGImageSourceGetCount(source) > 0 {
-                if let image = CGImageSourceCreateImageAtIndex(source, 0, nil) {
-                    // Validate image dimensions to prevent processing invalid images
-                    guard image.width > 0 && image.height > 0 &&
-                          image.width <= 32768 && image.height <= 32768 else {
-                        return nil
-                    }
-                    
-                    print("DEBUG DETECTION: PNG image (\(image.width)x\(image.height)) - preserving source for metadata")
-                    
-                    return (image: image, isCapturescuRendered: false, imageSource: source)
-                }
-            }
-        }
+        // Define supported image types in order of preference
+        let supportedTypes: [NSPasteboard.PasteboardType] = [
+            .png,    // Preferred - supports metadata well
+            .tiff,   // Good compatibility
+            .jpeg,   // Common format
+            .heic,   // Modern format
+            .webP    // Web format
+        ]
         
-        // Fall back to TIFF
-        if let data = pasteboard.data(forType: .tiff), !data.isEmpty {
-            // Validate data size to prevent processing corrupt/malformed images
-            guard data.count > 0 && data.count < 100_000_000 else { // 100MB limit
-                return nil
-            }
-            
-            if let source = CGImageSourceCreateWithData(data as CFData, nil),
-               CGImageSourceGetCount(source) > 0 {
-                if let image = CGImageSourceCreateImageAtIndex(source, 0, nil) {
-                    // Validate image dimensions to prevent processing invalid images
-                    guard image.width > 0 && image.height > 0 &&
-                          image.width <= 32768 && image.height <= 32768 else {
-                        return nil
+        // Try each supported format
+        for imageType in supportedTypes {
+            if let data = pasteboard.data(forType: imageType), !data.isEmpty {
+                // Validate data size to prevent processing corrupt/malformed images
+                guard data.count > 0 && data.count < 100_000_000 else { // 100MB limit
+                    continue // Try next format
+                }
+                
+                if let source = CGImageSourceCreateWithData(data as CFData, nil),
+                   CGImageSourceGetCount(source) > 0 {
+                    if let image = CGImageSourceCreateImageAtIndex(source, 0, nil) {
+                        // Validate image dimensions to prevent processing invalid images
+                        guard image.width > 0 && image.height > 0 &&
+                              image.width <= 32768 && image.height <= 32768 else {
+                            continue // Try next format
+                        }
+                        
+                        let formatName = imageType.rawValue.uppercased()
+                        print("DEBUG DETECTION: \(formatName) image (\(image.width)x\(image.height)) - preserving source for metadata")
+                        
+                        return (image: image, isCapturescuRendered: false, imageSource: source)
                     }
-                    
-                    print("DEBUG DETECTION (TIFF): TIFF image (\(image.width)x\(image.height)) - preserving source for metadata")
-                    
-                    return (image: image, isCapturescuRendered: false, imageSource: source)
                 }
             }
         }

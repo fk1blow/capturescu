@@ -25,10 +25,10 @@ struct ScreenshotRenderCanvas: View {
                 let imageSize: CGSize
                 
                 if capturedMarkers.isEmpty {
-                    // Image-only: position at (0,0) with natural size for no blur
+                    // Image-only: position at (0,0) with display size for consistency
                     imagePositionInCapture = CGPoint(x: 0, y: 0)
-                    // Use natural size (original pixels × HiDPI scale only) to avoid blur
-                    imageSize = capturedImage.naturalSize
+                    // Use display size (the size it appears in the app) for consistent behavior
+                    imageSize = capturedImage.displaySize
                 } else {
                     // Mixed content: transform display position to capture position
                     imagePositionInCapture = CGPoint(
