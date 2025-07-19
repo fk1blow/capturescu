@@ -34,11 +34,8 @@ struct DrawingSurfaceView: View {
         let x = capturedImage!.position.x
         let y = capturedImage!.position.y
 
-        // Get the screen scale to handle Retina displays properly
-        let screenScale = NSScreen.main?.backingScaleFactor ?? 1.0
-
-        // Render at actual pixel size (1:1 mapping) with user scale applied
-        // Display images at their native pixel size without screen scale conversion
+        // Render at natural scale (HiDPI only, no window scaling)
+        // Display images at their natural size
         let width = CGFloat(capturedImage!.image.width) * capturedImage!.scale
         let height = CGFloat(capturedImage!.image.height) * capturedImage!.scale
 

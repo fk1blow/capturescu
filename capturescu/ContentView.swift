@@ -11,23 +11,25 @@ import SwiftUI
 struct CapturedPasteboardImage {
     var image: CGImage
     var position: CGPoint
-    var scale: CGFloat = 1.0
-    var hiDPIScale: CGFloat = 1.0  // Preserve original HiDPI scale for natural size rendering
+    var scale: CGFloat = 1.0  // Natural scale (HiDPI only) - used for both display and copy
+    var hiDPIScale: CGFloat = 1.0  // Preserve original HiDPI scale for metadata
     
-    // Computed property for display size in points
-    var displaySize: CGSize {
+    // Computed property for natural size (display and copy size)
+    var naturalSize: CGSize {
         return CGSize(
             width: CGFloat(image.width) * scale,
             height: CGFloat(image.height) * scale
         )
     }
     
-    // Computed property for natural size (original pixels × HiDPI scale only)
-    var naturalSize: CGSize {
-        return CGSize(
-            width: CGFloat(image.width) * hiDPIScale,
-            height: CGFloat(image.height) * hiDPIScale
-        )
+    // Legacy compatibility - now same as naturalSize
+    var displaySize: CGSize {
+        return naturalSize
+    }
+    
+    // Legacy compatibility - now same as naturalSize
+    var logicalSize: CGSize {
+        return naturalSize
     }
 }
 
@@ -246,41 +248,27 @@ struct ContentView: View, KeyboardCommandResponder {
         }
         // If no imageSource, default to 1.0 scale (display at natural size)
         
-        // Calculate display scale for window fitting
-        let windowScale = windowSizeManager.calculateImageScale(for: imageSize)
+        // Use natural size rendering - no window scaling at all
+        let scale = hiDPIScale  // Only HiDPI scaling
         
-        // Combine scales for final display scale
-        let finalScale = windowScale * hiDPIScale
+        // Simple centered positioning at natural size
+        let naturalImageSize = CGSize(
+            width: CGFloat(image.width) * scale,
+            height: CGFloat(image.height) * scale
+        )
         
-        // Calculate window size
-        let windowSize = windowSizeManager.calculateWindowSize(for: imageSize)
+        // Center image in the view with basic padding
+        let x = LayoutConstants.imagePadding
+        let y = LayoutConstants.imagePadding
         
-        // Resize window and position image
-        windowSizeManager.resizeWindow(to: windowSize) {
-            // Calculate available space for image (excluding padding and toolbar)
-            let availableWidth = windowSize.width - LayoutConstants.totalHorizontalPadding
-            let availableHeight = windowSize.height - LayoutConstants.totalVerticalSpace
-            
-            // Calculate scaled size
-            let scaledSize = CGSize(
-                width: imageSize.width * finalScale,
-                height: imageSize.height * finalScale
-            )
-            
-            // Position image in available space with padding
-            let x = LayoutConstants.imagePadding + (availableWidth - scaledSize.width) / 2
-            let y = LayoutConstants.imagePadding + (availableHeight - scaledSize.height) / 2
-            
-            self.capturedImage = CapturedPasteboardImage(
-                image: image,
-                position: CGPoint(x: x, y: y),
-                scale: finalScale,
-                hiDPIScale: hiDPIScale
-            )
-            
-            print("DEBUG PASTE: imageSize=\(imageSize), hiDPIScale=\(hiDPIScale), windowScale=\(windowScale), finalScale=\(finalScale), position=\(CGPoint(x: x, y: y))")
-            print("DEBUG PASTE: windowSize=\(windowSize), availableSize=\(availableWidth)x\(availableHeight), scaledSize=\(scaledSize)")
-        }
+        self.capturedImage = CapturedPasteboardImage(
+            image: image,
+            position: CGPoint(x: x, y: y),
+            scale: scale,  // Natural scale for everything
+            hiDPIScale: hiDPIScale
+        )
+        
+        print("DEBUG PASTE: imageSize=\(imageSize), hiDPIScale=\(hiDPIScale), scale=\(scale), position=\(CGPoint(x: x, y: y)), naturalSize=\(naturalImageSize)")
     }
 
     private func handleCopyAction() {
@@ -333,14 +321,14 @@ struct ContentView: View, KeyboardCommandResponder {
     // Improved capture bounds calculation
     private func calculateCaptureBounds(image: CapturedPasteboardImage?, markers: [Marker]) -> CGRect {
         if markers.isEmpty {
-            // Image-only capture: create tight bounds around display size
+            // Image-only capture: create tight bounds around natural size
             guard let image = image else { return CGRect.zero }
-            // Use display size (the size it actually appears in the app) for consistent behavior
+            // Use natural size (HiDPI only, no window scaling) for copy operations
             return CGRect(
                 x: 0,
                 y: 0,
-                width: image.displaySize.width,
-                height: image.displaySize.height
+                width: image.naturalSize.width,
+                height: image.naturalSize.height
             )
         } else {
             // Mixed content: use existing CaptureScreenshotBounds logic
