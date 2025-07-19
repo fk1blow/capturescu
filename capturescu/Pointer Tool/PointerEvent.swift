@@ -44,6 +44,7 @@ enum KeyEvent {
     case escape
     case enter
     case tab
+    case space
 }
 
 /// Cursor types for visual feedback

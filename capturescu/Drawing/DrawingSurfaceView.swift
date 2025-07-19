@@ -7,6 +7,7 @@
 
 import Foundation
 import SwiftUI
+import AppKit
 
 struct DrawingSurfaceView: View {
   var capturedImage: CapturedPasteboardImage?
@@ -20,6 +21,13 @@ struct DrawingSurfaceView: View {
   @State private var lastClickLocation: CGPoint = .zero
   private let doubleClickTimeWindow: TimeInterval = 0.5 // 500ms
   private let doubleClickLocationTolerance: CGFloat = 10.0 // 10 pixels
+  
+  // Infinite canvas state
+  @State private var canvasOffset: CGPoint = .zero
+  @State private var isSpacePressed: Bool = false
+  @State private var panStartOffset: CGPoint = .zero
+  @State private var keyMonitor: Any?
+  
 
   init(capturedImage: CapturedPasteboardImage?) {
     self.capturedImage = capturedImage
@@ -29,6 +37,9 @@ struct DrawingSurfaceView: View {
     Canvas { ctx, size in
       // Access the current active tool to make Canvas observe its @Observable changes
       let _ = eventManager.currentActiveTool
+
+      // Apply canvas offset transformation
+      ctx.translateBy(x: canvasOffset.x, y: canvasOffset.y)
 
       if capturedImage != nil {
         let x = capturedImage!.position.x
@@ -67,6 +78,10 @@ struct DrawingSurfaceView: View {
     )
     .onAppear {
       setupEventManager()
+      setupSpaceKeyMonitoring()
+    }
+    .onDisappear {
+      cleanupSpaceKeyMonitoring()
     }
     .onChange(of: toolsManager.pointerTool.toolName) { newTool in
       eventManager.handleToolChange(to: newTool)
@@ -87,6 +102,30 @@ struct DrawingSurfaceView: View {
   private func setupEventManager() {
     // Sync current tool selection with the already-configured EventManager
     eventManager.handleCurrentToolChange()
+  }
+  
+  private func setupSpaceKeyMonitoring() {
+    keyMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .keyUp]) { event in
+      guard event.keyCode == 49 else { return event } // 49 is space key code
+      
+      if event.type == .keyDown && !event.isARepeat {
+        isSpacePressed = true
+        NSCursor.openHand.set()
+      } else if event.type == .keyUp {
+        isSpacePressed = false
+        NSCursor.arrow.set() // Reset to default cursor
+      }
+      
+      // Return nil to consume the event and prevent the tic sound
+      return nil
+    }
+  }
+  
+  private func cleanupSpaceKeyMonitoring() {
+    if let monitor = keyMonitor {
+      NSEvent.removeMonitor(monitor)
+      keyMonitor = nil
+    }
   }
 
   private func newPointerToolView() -> some View {
@@ -122,23 +161,55 @@ struct DrawingSurfaceView: View {
     let location = value.location
     let translation = value.translation
 
+    // If space is pressed, handle canvas panning
+    if isSpacePressed {
+      // On drag start, save the current offset
+      if translation.width == 0 && translation.height == 0 {
+        panStartOffset = canvasOffset
+      } else {
+        // Apply translation to the start offset
+        canvasOffset = CGPoint(
+          x: panStartOffset.x + translation.width,
+          y: panStartOffset.y + translation.height
+        )
+      }
+      return
+    }
+
+    // Convert screen coordinates to canvas coordinates for tools
+    let canvasLocation = CGPoint(
+      x: location.x - canvasOffset.x,
+      y: location.y - canvasOffset.y
+    )
+
     // Detect start of gesture
     if translation.width == 0 && translation.height == 0 {
       // Check if we're hovering over a marker
       if markersManager.isHovering {
-        eventManager.handleEvent(.dragStart(location))
+        eventManager.handleEvent(.dragStart(canvasLocation))
       } else {
-        eventManager.handleEvent(.dragStart(location))
+        eventManager.handleEvent(.dragStart(canvasLocation))
       }
     } else {
       // Continue gesture
-      eventManager.handleEvent(.dragUpdate(location))
+      eventManager.handleEvent(.dragUpdate(canvasLocation))
     }
   }
 
   private func handleDragEnded(_ value: DragGesture.Value) {
     let location = value.location
     let translation = value.translation
+
+    // If space was pressed, this was a pan gesture - no need to send events to tools
+    if isSpacePressed {
+      return
+    }
+
+    // Convert screen coordinates to canvas coordinates for tools
+    let canvasLocation = CGPoint(
+      x: location.x - canvasOffset.x,
+      y: location.y - canvasOffset.y
+    )
 
     // Check if this was a click (no movement)
     if translation.width == 0 && translation.height == 0 {
@@ -148,25 +219,30 @@ struct DrawingSurfaceView: View {
       
       // Check if this is a double-click
       if timeSinceLastClick <= doubleClickTimeWindow && distance <= doubleClickLocationTolerance {
-        eventManager.handleEvent(.doubleClick(location))
+        eventManager.handleEvent(.doubleClick(canvasLocation))
       } else {
-        eventManager.handleEvent(.click(location))
+        eventManager.handleEvent(.click(canvasLocation))
       }
       
       // Update last click tracking
       lastClickTime = currentTime
       lastClickLocation = location
     } else {
-      eventManager.handleEvent(.dragEnd(location))
+      eventManager.handleEvent(.dragEnd(canvasLocation))
     }
   }
 
   private func handleHover(_ phase: HoverPhase) {
     switch phase {
     case let .active(location):
+      // Convert screen coordinates to canvas coordinates
+      let canvasLocation = CGPoint(
+        x: location.x - canvasOffset.x,
+        y: location.y - canvasOffset.y
+      )
       // Update markers manager hover state
-      markersManager.hoverMarker(at: location)
-    // eventManager.handleEvent(.hover(location)) // Commented out for debugging
+      markersManager.hoverMarker(at: canvasLocation)
+    // eventManager.handleEvent(.hover(canvasLocation)) // Commented out for debugging
     case .ended:
       markersManager.clearHover()
       // eventManager.handleEvent(.hoverEnd) // Commented out for debugging
