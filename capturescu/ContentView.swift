@@ -13,7 +13,8 @@ struct CapturedPasteboardImage {
     var position: CGPoint
     var scale: CGFloat = 1.0  // Natural scale (HiDPI only) - used for both display and copy
     var hiDPIScale: CGFloat = 1.0  // Preserve original HiDPI scale for metadata
-    
+    var originalPNGData: Data?  // Store original PNG data to avoid re-encoding degradation
+
     // Computed property for natural size (display and copy size)
     var naturalSize: CGSize {
         return CGSize(
@@ -21,12 +22,12 @@ struct CapturedPasteboardImage {
             height: CGFloat(image.height) * scale
         )
     }
-    
+
     // Legacy compatibility - now same as naturalSize
     var displaySize: CGSize {
         return naturalSize
     }
-    
+
     // Legacy compatibility - now same as naturalSize
     var logicalSize: CGSize {
         return naturalSize
@@ -237,38 +238,40 @@ struct ContentView: View, KeyboardCommandResponder {
         guard let imageData = NSPasteboard.getImage() else {
             return
         }
-        
+
         let image = imageData.image
         let imageSize = CGSize(width: image.width, height: image.height)
-        
+
         // Use metadata-based HiDPI detection only
         var hiDPIScale: CGFloat = 1.0
         if let imageSource = imageData.imageSource {
             hiDPIScale = detectHiDPIScale(from: imageSource)
         }
         // If no imageSource, default to 1.0 scale (display at natural size)
-        
+
         // Use natural size rendering - no window scaling at all
         let scale = hiDPIScale  // Only HiDPI scaling
-        
+
         // Simple centered positioning at natural size
         let naturalImageSize = CGSize(
             width: CGFloat(image.width) * scale,
             height: CGFloat(image.height) * scale
         )
-        
+
         // Center image in the view with basic padding
         let x = LayoutConstants.imagePadding
         let y = LayoutConstants.imagePadding
-        
+
         self.capturedImage = CapturedPasteboardImage(
             image: image,
             position: CGPoint(x: x, y: y),
             scale: scale,  // Natural scale for everything
-            hiDPIScale: hiDPIScale
+            hiDPIScale: hiDPIScale,
+            originalPNGData: imageData.originalPNGData  // Preserve original data for zero-loss copy
         )
-        
-        print("DEBUG PASTE: imageSize=\(imageSize), hiDPIScale=\(hiDPIScale), scale=\(scale), position=\(CGPoint(x: x, y: y)), naturalSize=\(naturalImageSize)")
+
+        let hasOriginalData = imageData.originalPNGData != nil
+        print("DEBUG PASTE: imageSize=\(imageSize), hiDPIScale=\(hiDPIScale), scale=\(scale), position=\(CGPoint(x: x, y: y)), naturalSize=\(naturalImageSize), hasOriginalPNG=\(hasOriginalData)")
     }
 
     private func handleCopyAction() {
@@ -276,46 +279,72 @@ struct ContentView: View, KeyboardCommandResponder {
         guard capturedImage != nil || !markersManager.markers.isEmpty else {
             return
         }
-        
-        // Calculate capture bounds using improved logic
+
+        // FAST PATH: Image-only copy with no markers - zero quality loss
+        if markersManager.markers.isEmpty, let image = capturedImage {
+            if let originalData = image.originalPNGData {
+                // Zero-loss: write original PNG data directly back to pasteboard
+                NSPasteboard.addImageData(originalData)
+                print("DEBUG COPY: Fast path - using original PNG data (zero loss, \(originalData.count) bytes)")
+                return
+            }
+            // Fallback for non-PNG sources: use CGContext renderer
+            if let pngData = CGContextRenderer.renderWithMarkers(
+                image: image.image,
+                markers: [],
+                bounds: CGRect(origin: .zero, size: image.naturalSize),
+                imagePosition: .zero,
+                imageSize: image.naturalSize,
+                hiDPIScale: image.hiDPIScale
+            ) {
+                NSPasteboard.addImageData(pngData)
+                print("DEBUG COPY: Fast path fallback - CGContext render for non-PNG source")
+                return
+            }
+        }
+
+        // STANDARD PATH: Image + markers using CGContext (bypasses SwiftUI ImageRenderer)
         let captureBounds = calculateCaptureBounds(
             image: capturedImage,
             markers: markersManager.markers
         )
-        
+
         // Transform markers to capture coordinates
         let transformedMarkers = markersManager.markers.map { marker in
             var transformedMarker = marker
             transformedMarker.offsetMarkerBy(dx: -captureBounds.minX, dy: -captureBounds.minY)
             return transformedMarker
         }
-        
-        // Create renderer with capture coordinate system
-        let renderer = ImageRenderer(
-            content: ScreenshotRenderCanvas(
-                capturedBounds: captureBounds,
-                capturedImage: capturedImage,
-                capturedMarkers: transformedMarkers
+
+        // Calculate image position in capture coordinates
+        let imagePositionInCapture: CGPoint
+        let imageSize: CGSize
+
+        if let image = capturedImage {
+            imagePositionInCapture = CGPoint(
+                x: image.position.x - captureBounds.minX,
+                y: image.position.y - captureBounds.minY
             )
-        )
-        
-        // Configure renderer for high-quality output
-        // Use screen scale for crisp rendering, but capture bounds are already at display size
-        let screenScale = NSScreen.main?.backingScaleFactor ?? 1.0
-        renderer.scale = screenScale
-        renderer.proposedSize = ProposedViewSize(
-            width: captureBounds.width,
-            height: captureBounds.height
-        )
-        
-        // Attempt to render the image with error handling
-        guard let capture = renderer.cgImage else {
-            return
+            imageSize = image.displaySize
+        } else {
+            imagePositionInCapture = .zero
+            imageSize = .zero
         }
-        
-        // Store image to clipboard with preserved HiDPI scale
-        let originalHiDPIScale = capturedImage?.hiDPIScale ?? 1.0
-        NSPasteboard.addImage(capture: capture, originalHiDPIScale: originalHiDPIScale)
+
+        // Use CGContext renderer instead of SwiftUI ImageRenderer for minimal quality loss
+        if let pngData = CGContextRenderer.renderWithMarkers(
+            image: capturedImage?.image,
+            markers: transformedMarkers,
+            bounds: CGRect(origin: .zero, size: captureBounds.size),
+            imagePosition: imagePositionInCapture,
+            imageSize: imageSize,
+            hiDPIScale: capturedImage?.hiDPIScale ?? 1.0
+        ) {
+            NSPasteboard.addImageData(pngData)
+            print("DEBUG COPY: Standard path - CGContext composite with \(transformedMarkers.count) markers")
+        } else {
+            print("DEBUG COPY: CGContext rendering failed, no fallback")
+        }
     }
     
     // Improved capture bounds calculation

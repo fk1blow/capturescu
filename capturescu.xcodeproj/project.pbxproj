@@ -51,6 +51,7 @@
 		2B60BFD92CC525F40011E38B /* Color+Contrast.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B60BFD82CC525F40011E38B /* Color+Contrast.swift */; };
 		2B82F0F92CAF31AD000D9B7E /* GeometryGetter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B82F0F82CAF31AD000D9B7E /* GeometryGetter.swift */; };
 		2B9004AD2CB2029F00E240D5 /* Pasteboard+CGImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B9004AC2CB2029F00E240D5 /* Pasteboard+CGImage.swift */; };
+		2BCGCR012E4F000000000001 /* CGContextRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BCGCR002E4F000000000001 /* CGContextRenderer.swift */; };
 		2B9004AF2CB20DA900E240D5 /* CaptureScreenshotBounds.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B9004AE2CB20DA900E240D5 /* CaptureScreenshotBounds.swift */; };
 		2B9004B42CB286BC00E240D5 /* ToolbarButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B9004B32CB286BC00E240D5 /* ToolbarButton.swift */; };
 		2B9145B32BFA2B7D00CA8097 /* capturescuApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B9145B22BFA2B7D00CA8097 /* capturescuApp.swift */; };
@@ -119,6 +120,7 @@
 		2B60BFD82CC525F40011E38B /* Color+Contrast.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+Contrast.swift"; sourceTree = "<group>"; };
 		2B82F0F82CAF31AD000D9B7E /* GeometryGetter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeometryGetter.swift; sourceTree = "<group>"; };
 		2B9004AC2CB2029F00E240D5 /* Pasteboard+CGImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Pasteboard+CGImage.swift"; sourceTree = "<group>"; };
+		2BCGCR002E4F000000000001 /* CGContextRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CGContextRenderer.swift; sourceTree = "<group>"; };
 		2B9004AE2CB20DA900E240D5 /* CaptureScreenshotBounds.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureScreenshotBounds.swift; sourceTree = "<group>"; };
 		2B9004B32CB286BC00E240D5 /* ToolbarButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolbarButton.swift; sourceTree = "<group>"; };
 		2B9145AF2BFA2B7D00CA8097 /* capturescu.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = capturescu.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -245,6 +247,7 @@
 			isa = PBXGroup;
 			children = (
 				2B9004AC2CB2029F00E240D5 /* Pasteboard+CGImage.swift */,
+				2BCGCR002E4F000000000001 /* CGContextRenderer.swift */,
 				2B5B85672CADDFE10028CE00 /* ScreenshotRenderCanvas.swift */,
 				2B9004AE2CB20DA900E240D5 /* CaptureScreenshotBounds.swift */,
 			);
@@ -497,6 +500,7 @@
 				2B1CF0AB2CB8372300680F38 /* ToolsManager.swift in Sources */,
 				2B98D83F2CA1CDFE00AD23FB /* BoundingBox.swift in Sources */,
 				2B9004AD2CB2029F00E240D5 /* Pasteboard+CGImage.swift in Sources */,
+				2BCGCR012E4F000000000001 /* CGContextRenderer.swift in Sources */,
 				2B0B088E2CA0338700FA6C98 /* HitDetection.swift in Sources */,
 				2B4D22722CB7EE280082C06E /* ToolPickerView.swift in Sources */,
 				2BAA6A512CA5D46800B08792 /* ToolbarView.swift in Sources */,

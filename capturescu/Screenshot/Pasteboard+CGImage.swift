@@ -18,9 +18,9 @@ extension NSPasteboard.PasteboardType {
 }
 
 extension NSPasteboard {
-    static func getImage() -> (image: CGImage, isCapturescuRendered: Bool, imageSource: CGImageSource?)? {
+    static func getImage() -> (image: CGImage, isCapturescuRendered: Bool, imageSource: CGImageSource?, originalPNGData: Data?)? {
         let pasteboard = NSPasteboard.general
-        
+
         // Define supported image types in order of preference
         let supportedTypes: [NSPasteboard.PasteboardType] = [
             .png,    // Preferred - supports metadata well
@@ -29,7 +29,7 @@ extension NSPasteboard {
             .heic,   // Modern format
             .webP    // Web format
         ]
-        
+
         // Try each supported format
         for imageType in supportedTypes {
             if let data = pasteboard.data(forType: imageType), !data.isEmpty {
@@ -37,7 +37,7 @@ extension NSPasteboard {
                 guard data.count > 0 && data.count < 100_000_000 else { // 100MB limit
                     continue // Try next format
                 }
-                
+
                 if let source = CGImageSourceCreateWithData(data as CFData, nil),
                    CGImageSourceGetCount(source) > 0 {
                     if let image = CGImageSourceCreateImageAtIndex(source, 0, nil) {
@@ -46,11 +46,14 @@ extension NSPasteboard {
                               image.width <= 32768 && image.height <= 32768 else {
                             continue // Try next format
                         }
-                        
+
                         let formatName = imageType.rawValue.uppercased()
                         print("DEBUG DETECTION: \(formatName) image (\(image.width)x\(image.height)) - preserving source for metadata")
-                        
-                        return (image: image, isCapturescuRendered: false, imageSource: source)
+
+                        // Preserve original data only for PNG (lossless format)
+                        let originalData: Data? = (imageType == .png) ? data : nil
+
+                        return (image: image, isCapturescuRendered: false, imageSource: source, originalPNGData: originalData)
                     }
                 }
             }
@@ -61,10 +64,21 @@ extension NSPasteboard {
     
     
 
+    /// Write PNG data directly to pasteboard (zero-loss for original images)
+    static func addImageData(_ pngData: Data) {
+        guard pngData.count > 0 && pngData.count < 100_000_000 else { return }
+
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setData(pngData, forType: .png)
+
+        print("DEBUG CLIPBOARD: Added PNG data directly (\(pngData.count) bytes) - zero loss")
+    }
+
     static func addImage(capture: CGImage?, originalHiDPIScale: CGFloat = 1.0) {
         // Get the CGImage
         guard let image = capture else { return }
-        
+
         // Validate image dimensions to prevent adding invalid images
         guard image.width > 0 && image.height > 0 &&
               image.width <= 32768 && image.height <= 32768 else {
@@ -73,38 +87,38 @@ extension NSPasteboard {
 
         // Calculate DPI to preserve HiDPI information
         let dpiValue = 72.0 / originalHiDPIScale // Convert scale back to DPI
-        
+
         print("DEBUG CLIPBOARD: Adding image at exact size (\(image.width)x\(image.height)) with DPI=\(dpiValue)")
-        
+
         // Create the pasteboard
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
 
         // Store exact image data with preserved DPI metadata
         let bitmapRep = NSBitmapImageRep(cgImage: image)
-        
+
         // Create properties dictionary with DPI information
         let imageProperties: [NSBitmapImageRep.PropertyKey: Any] = [
             .compressionFactor: 1.0,
             .ditherTransparency: false
         ]
-        
-        // Add PNG format with DPI metadata
+
+        // Add PNG format with DPI metadata (PNG only, no TIFF for quality preservation)
         if let pngData = bitmapRep.representation(using: .png, properties: imageProperties) {
             guard pngData.count > 0 && pngData.count < 100_000_000 else { return }
-            
+
             // Create mutable data for the destination
             let mutableData = NSMutableData()
-            
+
             // Create image source from the PNG data
             if let source = CGImageSourceCreateWithData(pngData as CFData, nil),
-               let destination = CGImageDestinationCreateWithData(mutableData, kUTTypePNG, 1, nil) {
-                
+               let destination = CGImageDestinationCreateWithData(mutableData, UTType.png.identifier as CFString, 1, nil) {
+
                 let metadata: [CFString: Any] = [
                     kCGImagePropertyDPIWidth: dpiValue,
                     kCGImagePropertyDPIHeight: dpiValue
                 ]
-                
+
                 CGImageDestinationAddImageFromSource(destination, source, 0, metadata as CFDictionary)
                 if CGImageDestinationFinalize(destination) {
                     pasteboard.setData(mutableData as Data, forType: .png)
@@ -114,12 +128,5 @@ extension NSPasteboard {
                 pasteboard.setData(pngData, forType: .png)
             }
         }
-        
-        // Add TIFF format for broader compatibility
-        if let tiffData = bitmapRep.representation(using: .tiff, properties: imageProperties) {
-            guard tiffData.count > 0 && tiffData.count < 100_000_000 else { return }
-            pasteboard.setData(tiffData, forType: .tiff)
-        }
-        
     }
 }
