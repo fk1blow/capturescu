@@ -147,6 +147,7 @@
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		2B00C2642D18464B0001B914 /* Accesories */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Accesories; sourceTree = "<group>"; };
+		2BCAFE000000000000000001 /* Capture */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Capture; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -284,6 +285,7 @@
 				2B1C58AB2CB5D8D000EF826D /* Drawing */,
 				2B1CF0B12CB84FD400680F38 /* Pointer Tool */,
 				2B1CF0B02CB8497800680F38 /* Utils */,
+				2BCAFE000000000000000001 /* Capture */,
 				2B9145B42BFA2B7D00CA8097 /* ContentView.swift */,
 				2B9145B22BFA2B7D00CA8097 /* capturescuApp.swift */,
 				2B9145B62BFA2B7D00CA8097 /* Assets.xcassets */,
@@ -345,6 +347,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				2B00C2642D18464B0001B914 /* Accesories */,
+				2BCAFE000000000000000001 /* Capture */,
 			);
 			name = capturescu;
 			packageProductDependencies = (

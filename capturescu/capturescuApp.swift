@@ -9,6 +9,8 @@ import SwiftUI
 
 @main
 struct capturescuApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+
     private let selectionManager = ToolsManager()
     private let markersManager = MarkersManager()
     private let keyboardManager = KeyboardManager.shared
@@ -96,6 +98,14 @@ struct capturescuApp: App {
                     keyboardManager.trigger(command: .deleteMarker)
                 }
                 .keyboardShortcut(.delete, modifiers: [])
+            }
+
+            CommandMenu("Capture") {
+                Button("Capture Region") {
+                    appDelegate.flowController.beginCapture()
+                }
+                // Meh+G (⌃⌥⇧G) — also available system-wide via the global hotkey.
+                .keyboardShortcut("g", modifiers: [.control, .option, .shift])
             }
         }
     }
