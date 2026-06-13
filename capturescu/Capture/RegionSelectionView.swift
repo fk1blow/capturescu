@@ -37,7 +37,7 @@ struct RegionSelectionView: View {
                 if hasSelection {
                     dimmed.addRect(selection)
                 }
-                ctx.fill(dimmed, with: .color(.black.opacity(0.45)), style: FillStyle(eoFill: true))
+                ctx.fill(dimmed, with: .color(.black.opacity(0.8)), style: FillStyle(eoFill: true))
             }
             .ignoresSafeArea()
 
@@ -103,16 +103,40 @@ final class MouseTrackingNSView: NSView {
     var onUp: ((CGPoint) -> Void)?
     var onCancel: (() -> Void)?
 
+    private var cursorTrackingArea: NSTrackingArea?
+
     override var isFlipped: Bool { true }
     override var acceptsFirstResponder: Bool { true }
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
         window?.makeFirstResponder(self)
+        // Flip to the crosshair the instant the overlay appears — the pointer
+        // is already over this full-screen view, so we don't wait for a drag.
+        NSCursor.crosshair.set()
     }
 
-    override func resetCursorRects() {
-        addCursorRect(bounds, cursor: .crosshair)
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let cursorTrackingArea {
+            removeTrackingArea(cursorTrackingArea)
+        }
+        let area = NSTrackingArea(
+            rect: bounds,
+            options: [.activeAlways, .inVisibleRect, .mouseEnteredAndExited, .cursorUpdate],
+            owner: self,
+            userInfo: nil
+        )
+        addTrackingArea(area)
+        cursorTrackingArea = area
+    }
+
+    override func cursorUpdate(with event: NSEvent) {
+        NSCursor.crosshair.set()
+    }
+
+    override func mouseEntered(with event: NSEvent) {
+        NSCursor.crosshair.set()
     }
 
     private func point(for event: NSEvent) -> CGPoint {
