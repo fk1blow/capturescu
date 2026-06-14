@@ -16,11 +16,12 @@ import SwiftUI
 struct CaptureAnnotationView: View {
     let capturedImage: CapturedPasteboardImage
     let viewportSize: CGSize
+    var initialCanvasOffset: CGPoint = .zero
 
     private let borderWidth: CGFloat = 2
 
     var body: some View {
-        DrawingSurfaceView(capturedImage: capturedImage, viewportSize: viewportSize)
+        DrawingSurfaceView(capturedImage: capturedImage, initialCanvasOffset: initialCanvasOffset)
             .frame(width: viewportSize.width, height: viewportSize.height)
             .clipped()
             .padding(borderWidth)

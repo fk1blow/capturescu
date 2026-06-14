@@ -11,9 +11,6 @@ import AppKit
 
 struct DrawingSurfaceView: View {
   var capturedImage: CapturedPasteboardImage?
-  /// The visible canvas size. When set (capture flow), panning is clamped so the
-  /// 1:1 image can't be dragged past its own edges. Nil = no clamping (legacy).
-  var viewportSize: CGSize?
 
   @EnvironmentObject var toolsManager: ToolsManager
   @EnvironmentObject var markersManager: MarkersManager
@@ -30,11 +27,12 @@ struct DrawingSurfaceView: View {
   @State private var isSpacePressed: Bool = false
   @State private var panStartOffset: CGPoint = .zero
   @State private var keyMonitor: Any?
+  @State private var scrollMonitor: Any?
   
 
-  init(capturedImage: CapturedPasteboardImage?, viewportSize: CGSize? = nil) {
+  init(capturedImage: CapturedPasteboardImage?, initialCanvasOffset: CGPoint = .zero) {
     self.capturedImage = capturedImage
-    self.viewportSize = viewportSize
+    _canvasOffset = State(initialValue: initialCanvasOffset)
   }
 
   /// Drag pans the image (instead of drawing) while the hand tool is selected
@@ -47,20 +45,6 @@ struct DrawingSurfaceView: View {
   /// active tool's own cursor is used.
   private var activeCursor: CursorType {
     toolsManager.currentTool == .HandPointer ? .move : eventManager.currentCursor
-  }
-
-  /// Keep the panned image within its own bounds: offset clamped to
-  /// [viewport - image, 0] per axis (collapses to 0 when the image fits).
-  private func clampedOffset(_ proposed: CGPoint) -> CGPoint {
-    guard let viewport = viewportSize, let image = capturedImage?.naturalSize else {
-      return proposed
-    }
-    let minX = min(0, viewport.width - image.width)
-    let minY = min(0, viewport.height - image.height)
-    return CGPoint(
-      x: max(minX, min(0, proposed.x)),
-      y: max(minY, min(0, proposed.y))
-    )
   }
 
   var body: some View {
@@ -101,7 +85,9 @@ struct DrawingSurfaceView: View {
       // Draw the current tool's preview using the new system
       eventManager.renderPreview(context: ctx)
     }
-    .drawingGroup() // Force redraw when markers change
+    // NOTE: no .drawingGroup() here — it flattens the Canvas into a cached
+    // layer that doesn't re-render when only `canvasOffset` changes, which
+    // silently broke panning. The Canvas redraws fine on its own.
     .overlay(
       // New event-driven pointer tool view
       newPointerToolView()
@@ -109,9 +95,11 @@ struct DrawingSurfaceView: View {
     .onAppear {
       setupEventManager()
       setupSpaceKeyMonitoring()
+      setupScrollMonitoring()
     }
     .onDisappear {
       cleanupSpaceKeyMonitoring()
+      cleanupScrollMonitoring()
     }
     .onChange(of: toolsManager.pointerTool.toolName) { newTool in
       eventManager.handleToolChange(to: newTool)
@@ -158,6 +146,25 @@ struct DrawingSurfaceView: View {
     }
   }
 
+  /// Two-finger trackpad / mouse-wheel scroll pans the canvas (Figma-style),
+  /// independent of the selected tool.
+  private func setupScrollMonitoring() {
+    scrollMonitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { event in
+      canvasOffset = CGPoint(
+        x: canvasOffset.x + event.scrollingDeltaX,
+        y: canvasOffset.y + event.scrollingDeltaY
+      )
+      return event
+    }
+  }
+
+  private func cleanupScrollMonitoring() {
+    if let monitor = scrollMonitor {
+      NSEvent.removeMonitor(monitor)
+      scrollMonitor = nil
+    }
+  }
+
   private func newPointerToolView() -> some View {
     ZStack(alignment: .topLeading) {
       // Main interaction area
@@ -191,6 +198,9 @@ struct DrawingSurfaceView: View {
     let location = value.location
     let translation = value.translation
 
+    // Record the drag so the controller won't auto-hide if it ends outside.
+    eventManager.lastCanvasDragAt = Date()
+
     // Hand tool or space bar → pan the canvas instead of drawing.
     if isPanMode {
       // On drag start, save the current offset
@@ -198,11 +208,11 @@ struct DrawingSurfaceView: View {
         panStartOffset = canvasOffset
         NSCursor.closedHand.set()
       } else {
-        // Apply translation to the start offset, clamped to the image bounds
-        canvasOffset = clampedOffset(CGPoint(
+        // Infinite canvas: apply the translation with no bounds.
+        canvasOffset = CGPoint(
           x: panStartOffset.x + translation.width,
           y: panStartOffset.y + translation.height
-        ))
+        )
       }
       return
     }
@@ -230,6 +240,9 @@ struct DrawingSurfaceView: View {
   private func handleDragEnded(_ value: DragGesture.Value) {
     let location = value.location
     let translation = value.translation
+
+    // Record the drag so the controller won't auto-hide if it ended outside.
+    eventManager.lastCanvasDragAt = Date()
 
     // If this was a pan gesture, don't send events to tools.
     if isPanMode {

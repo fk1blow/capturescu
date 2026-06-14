@@ -33,6 +33,8 @@ final class AnnotationWindowController {
     /// How far the inside toolbar's bottom edge sits above the snapshot's bottom.
     private let toolbarInsideInset: CGFloat = 16
     private let borderWidth: CGFloat = 2
+    /// Smallest editor window, so tiny captures stay usable and the toolbar fits.
+    private let minViewport = CGSize(width: 360, height: 240)
     /// Keep the window this far from the screen edges, so the dashed border is
     /// always visible and there's breathing room. Captures larger than the
     /// resulting area are shown 1:1 and panned via the hand tool.
@@ -58,32 +60,46 @@ final class AnnotationWindowController {
             originalPNGData: nil
         )
 
-        // Cap the visible viewport to the screen (minus a margin + the border
-        // ring). A screenshot that fits is shown whole; a bigger one is shown
-        // 1:1 and panned via the hand tool — we never zoom.
+        // The visible viewport is the screenshot's size, clamped between a
+        // usable minimum (so tiny captures still get a workable window + room
+        // for the toolbar) and the screen cap (minus a margin + the border
+        // ring). A screenshot bigger than the cap is shown 1:1 and panned — we
+        // never zoom.
         let visible = visibleFrame(containing: imageTopLeft)
         let maxContent = CGSize(
             width: visible.width - 2 * edgeMargin - 2 * borderWidth,
             height: visible.height - 2 * edgeMargin - 2 * borderWidth
         )
         let viewport = CGSize(
-            width: min(imageSize.width, maxContent.width),
-            height: min(imageSize.height, maxContent.height)
+            width: min(max(imageSize.width, minViewport.width), maxContent.width),
+            height: min(max(imageSize.height, minViewport.height), maxContent.height)
         )
         let windowSize = CGSize(
             width: viewport.width + 2 * borderWidth,
             height: viewport.height + 2 * borderWidth
         )
 
-        // Align the window so the snapshot's top-left lands on imageTopLeft
-        // (offset by the border ring), then clamp the whole window on-screen.
-        var originX = imageTopLeft.x - borderWidth
-        var originY = (imageTopLeft.y + borderWidth) - windowSize.height
+        // Center the screenshot when the viewport is larger than it (small
+        // captures). Baked into the canvas offset so markers/export stay aligned.
+        let centerOffset = CGPoint(
+            x: max(0, (viewport.width - imageSize.width) / 2),
+            y: max(0, (viewport.height - imageSize.height) / 2)
+        )
+
+        // Place the window so the screenshot's center lands on the captured
+        // region's center, then clamp the whole window on-screen. (For a tight
+        // window this reduces to anchoring the snapshot at imageTopLeft.)
+        let selectionCenter = CGPoint(
+            x: imageTopLeft.x + imageSize.width / 2,
+            y: imageTopLeft.y - imageSize.height / 2 // AppKit: y is the top edge
+        )
+        var originX = selectionCenter.x - windowSize.width / 2
+        var originY = selectionCenter.y - windowSize.height / 2
         originX = min(max(originX, visible.minX), visible.maxX - windowSize.width)
         originY = min(max(originY, visible.minY), visible.maxY - windowSize.height)
         let windowFrame = CGRect(origin: CGPoint(x: originX, y: originY), size: windowSize)
 
-        presentAnnotationWindow(viewportSize: viewport, at: windowFrame)
+        presentAnnotationWindow(viewportSize: viewport, initialCanvasOffset: centerOffset, at: windowFrame)
         presentToolbar(for: windowFrame)
         installKeyMonitor()
         startObservingFocus()
@@ -123,6 +139,11 @@ final class AnnotationWindowController {
 
     private func hide() {
         guard !isHidden else { return }
+        // Don't hide because of the focus loss caused by a pan/drag that just
+        // ended outside the window — only on a genuine app switch.
+        if let last = eventManager.lastCanvasDragAt, Date().timeIntervalSince(last) < 0.6 {
+            return
+        }
         isHidden = true
         removeKeyMonitor()
         stopObservingFocus()
@@ -179,10 +200,11 @@ final class AnnotationWindowController {
 
     // MARK: - Windows
 
-    private func presentAnnotationWindow(viewportSize: CGSize, at frame: CGRect) {
+    private func presentAnnotationWindow(viewportSize: CGSize, initialCanvasOffset: CGPoint, at frame: CGRect) {
         let view = CaptureAnnotationView(
             capturedImage: capturedImage,
-            viewportSize: viewportSize
+            viewportSize: viewportSize,
+            initialCanvasOffset: initialCanvasOffset
         )
             .environmentObject(toolsManager)
             .environmentObject(markersManager)
