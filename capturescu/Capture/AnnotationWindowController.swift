@@ -29,12 +29,16 @@ final class AnnotationWindowController {
     private var eventManager: EventManager!
     private var capturedImage: CapturedPasteboardImage!
 
-    private let toolbarSize = CGSize(width: 280, height: 58)
+    /// The toolbar's real intrinsic size, measured per-present (fallback below).
+    private var toolbarSize = CGSize(width: 280, height: 58)
     /// How far the inside toolbar's bottom edge sits above the snapshot's bottom.
     private let toolbarInsideInset: CGFloat = 16
+    /// Clearance reserved between the centered toolbar and each window edge.
+    private let toolbarSidePadding: CGFloat = 120
     private let borderWidth: CGFloat = 2
-    /// Smallest editor window, so tiny captures stay usable and the toolbar fits.
-    private let minViewport = CGSize(width: 360, height: 240)
+    /// Smallest editor height, so tiny captures stay usable (width is derived
+    /// from the measured toolbar so it always fits centered, see `present`).
+    private let minViewportHeight: CGFloat = 240
     /// Keep the window this far from the screen edges, so the dashed border is
     /// always visible and there's breathing room. Captures larger than the
     /// resulting area are shown 1:1 and panned via the hand tool.
@@ -52,6 +56,10 @@ final class AnnotationWindowController {
         eventManager = EventManager(markersManager: markersManager, toolsManager: toolsManager)
         toolsManager.selectTool(named: .FreehandPointer) // default to draw mode
 
+        // Measure the toolbar's real size so the window can fit it (env objects
+        // must be wired first — the probe renders MiniToolbarView).
+        toolbarSize = measureToolbarSize()
+
         capturedImage = CapturedPasteboardImage(
             image: image,
             position: .zero,
@@ -61,10 +69,14 @@ final class AnnotationWindowController {
         )
 
         // The visible viewport is the screenshot's size, clamped between a
-        // usable minimum (so tiny captures still get a workable window + room
-        // for the toolbar) and the screen cap (minus a margin + the border
-        // ring). A screenshot bigger than the cap is shown 1:1 and panned — we
-        // never zoom.
+        // usable minimum and the screen cap (minus a margin + the border ring).
+        // The minimum width reserves `toolbarSidePadding` on each side of the
+        // centered toolbar so it always fits inside. A screenshot bigger than the
+        // cap is shown 1:1 and panned — we never zoom.
+        let minViewport = CGSize(
+            width: toolbarSize.width + 2 * toolbarSidePadding,
+            height: minViewportHeight
+        )
         let visible = visibleFrame(containing: imageTopLeft)
         let maxContent = CGSize(
             width: visible.width - 2 * edgeMargin - 2 * borderWidth,
@@ -229,6 +241,17 @@ final class AnnotationWindowController {
         NSApp.activate(ignoringOtherApps: true)
 
         annotationWindow = window
+    }
+
+    /// The toolbar's intrinsic size, measured by laying out MiniToolbarView in a
+    /// throwaway hosting view. Used to size the panel and the minimum window.
+    private func measureToolbarSize() -> CGSize {
+        let probe = MiniToolbarView(copyAction: {}, closeAction: {})
+            .environmentObject(toolsManager)
+            .environmentObject(markersManager)
+            .environmentObject(eventManager)
+        let size = NSHostingView(rootView: probe).fittingSize
+        return size.width > 0 ? size : CGSize(width: 280, height: 58)
     }
 
     private func presentToolbar(for frame: CGRect) {
