@@ -31,14 +31,16 @@ final class AnnotationWindowController {
 
     /// The toolbar's real intrinsic size, measured per-present (fallback below).
     private var toolbarSize = CGSize(width: 280, height: 58)
-    /// How far the inside toolbar's bottom edge sits above the snapshot's bottom.
+    /// Gap between the toolbar's bottom edge and the window's bottom edge.
     private let toolbarInsideInset: CGFloat = 16
+    /// Gap between the image's bottom edge and the toolbar's top edge.
+    private let toolbarTopGap: CGFloat = 24
     /// Clearance reserved between the centered toolbar and each window edge.
     private let toolbarSidePadding: CGFloat = 120
     private let borderWidth: CGFloat = 2
-    /// Smallest editor height, so tiny captures stay usable (width is derived
-    /// from the measured toolbar so it always fits centered, see `present`).
-    private let minViewportHeight: CGFloat = 240
+    /// Smallest image region, so tiny captures stay usable (the toolbar band is
+    /// added below it; width is derived from the measured toolbar — see `present`).
+    private let minImageAreaHeight: CGFloat = 160
     /// Keep the window this far from the screen edges, so the dashed border is
     /// always visible and there's breathing room. Captures larger than the
     /// resulting area are shown 1:1 and panned via the hand tool.
@@ -68,50 +70,57 @@ final class AnnotationWindowController {
             originalPNGData: nil
         )
 
-        // The visible viewport is the screenshot's size, clamped between a
-        // usable minimum and the screen cap (minus a margin + the border ring).
-        // The minimum width reserves `toolbarSidePadding` on each side of the
-        // centered toolbar so it always fits inside. A screenshot bigger than the
-        // cap is shown 1:1 and panned — we never zoom.
-        let minViewport = CGSize(
-            width: toolbarSize.width + 2 * toolbarSidePadding,
-            height: minViewportHeight
-        )
+        // The window content is the image region plus a band below it that holds
+        // the toolbar, so the dashed border (drawn around the whole content) always
+        // wraps both. The width reserves `toolbarSidePadding` on each side of the
+        // centered toolbar. A screenshot too tall to leave room for the band is
+        // shown 1:1 and panned, with the toolbar overlapping its bottom instead.
+        let toolbarBand = toolbarTopGap + toolbarSize.height + toolbarInsideInset
+
         let visible = visibleFrame(containing: imageTopLeft)
         let maxContent = CGSize(
             width: visible.width - 2 * edgeMargin - 2 * borderWidth,
             height: visible.height - 2 * edgeMargin - 2 * borderWidth
         )
-        let viewport = CGSize(
-            width: min(max(imageSize.width, minViewport.width), maxContent.width),
-            height: min(max(imageSize.height, minViewport.height), maxContent.height)
-        )
+
+        let minWidth = toolbarSize.width + 2 * toolbarSidePadding
+        let contentWidth = min(max(imageSize.width, minWidth), maxContent.width)
+
+        let imageAreaHeight: CGFloat
+        let contentHeight: CGFloat
+        if imageSize.height + toolbarBand <= maxContent.height {
+            // Room: reserve the band, toolbar sits below the image (no overlap).
+            imageAreaHeight = min(max(imageSize.height, minImageAreaHeight), maxContent.height - toolbarBand)
+            contentHeight = imageAreaHeight + toolbarBand
+        } else {
+            // No room: image fills the window and the toolbar overlaps its bottom
+            // (pan to see underneath).
+            contentHeight = min(imageSize.height, maxContent.height)
+            imageAreaHeight = contentHeight
+        }
+        let content = CGSize(width: contentWidth, height: contentHeight)
         let windowSize = CGSize(
-            width: viewport.width + 2 * borderWidth,
-            height: viewport.height + 2 * borderWidth
+            width: content.width + 2 * borderWidth,
+            height: content.height + 2 * borderWidth
         )
 
-        // Center the screenshot when the viewport is larger than it (small
-        // captures). Baked into the canvas offset so markers/export stay aligned.
+        // Center the image horizontally in the content and vertically within the
+        // image region (above the band). Baked into the canvas offset so markers
+        // and the clipboard export stay aligned.
         let centerOffset = CGPoint(
-            x: max(0, (viewport.width - imageSize.width) / 2),
-            y: max(0, (viewport.height - imageSize.height) / 2)
+            x: max(0, (content.width - imageSize.width) / 2),
+            y: max(0, (imageAreaHeight - imageSize.height) / 2)
         )
 
-        // Place the window so the screenshot's center lands on the captured
-        // region's center, then clamp the whole window on-screen. (For a tight
-        // window this reduces to anchoring the snapshot at imageTopLeft.)
-        let selectionCenter = CGPoint(
-            x: imageTopLeft.x + imageSize.width / 2,
-            y: imageTopLeft.y - imageSize.height / 2 // AppKit: y is the top edge
-        )
-        var originX = selectionCenter.x - windowSize.width / 2
-        var originY = selectionCenter.y - windowSize.height / 2
+        // Place the window so the image's top-left lands on imageTopLeft, then
+        // clamp the whole window on-screen.
+        var originX = imageTopLeft.x - borderWidth - centerOffset.x
+        var originY = (imageTopLeft.y + borderWidth + centerOffset.y) - windowSize.height
         originX = min(max(originX, visible.minX), visible.maxX - windowSize.width)
         originY = min(max(originY, visible.minY), visible.maxY - windowSize.height)
         let windowFrame = CGRect(origin: CGPoint(x: originX, y: originY), size: windowSize)
 
-        presentAnnotationWindow(viewportSize: viewport, initialCanvasOffset: centerOffset, at: windowFrame)
+        presentAnnotationWindow(viewportSize: content, initialCanvasOffset: centerOffset, at: windowFrame)
         presentToolbar(for: windowFrame)
         installKeyMonitor()
         startObservingFocus()
