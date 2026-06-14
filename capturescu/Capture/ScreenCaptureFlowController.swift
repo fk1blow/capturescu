@@ -87,26 +87,16 @@ final class ScreenCaptureFlowController {
         // half-pixel drift between the crop and the window).
         let pointSize = CGSize(width: cropRect.width / scale, height: cropRect.height / scale)
 
-        // The editor window is at least `minSize`, so a tiny capture still yields
-        // a usable window; the snapshot sits at its real size top-left and the
-        // remaining area is filled gray (see CaptureAnnotationView).
-        let minSize = CGSize(width: 360, height: 240)
-        let windowSize = CGSize(
-            width: max(pointSize.width, minSize.width),
-            height: max(pointSize.height, minSize.height)
+        // Where the snapshot's top-left corner should land, in global AppKit
+        // screen coordinates (bottom-left origin → flip Y; this y is the image's
+        // top edge). The controller owns capping/centring/clamping from here.
+        let imageTopLeft = CGPoint(
+            x: screenFrame.minX + selectionPoints.minX,
+            y: screenFrame.minY + screenFrame.height - selectionPoints.minY
         )
 
-        // Anchor the window's top-left at the selection's top-left (AppKit is
-        // bottom-left origin → flip Y), then clamp so the whole editor stays
-        // on-screen.
-        var originX = screenFrame.minX + selectionPoints.minX
-        var originY = screenFrame.minY + screenFrame.height - selectionPoints.minY - windowSize.height
-        originX = min(max(originX, screenFrame.minX), screenFrame.maxX - windowSize.width)
-        originY = min(max(originY, screenFrame.minY), screenFrame.maxY - windowSize.height)
-        let annotationFrame = CGRect(origin: CGPoint(x: originX, y: originY), size: windowSize)
-
         let controller = AnnotationWindowController()
-        controller.present(image: cropped, scale: scale, at: annotationFrame) { [weak self] in
+        controller.present(image: cropped, scale: scale, imageSize: pointSize, imageTopLeft: imageTopLeft) { [weak self] in
             self?.annotationController = nil
         }
         annotationController = controller

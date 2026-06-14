@@ -37,6 +37,13 @@ struct MiniToolbarView: View {
                 toolsManager.selectTool(named: .TextPointer)
             }
 
+            ToolbarButton(
+                iconName: "hand.draw",
+                active: toolsManager.currentTool == .HandPointer
+            ) {
+                toolsManager.selectTool(named: .HandPointer)
+            }
+
             Divider().frame(height: 28)
 
             ToolbarButton(iconName: "doc.on.clipboard", active: false) {

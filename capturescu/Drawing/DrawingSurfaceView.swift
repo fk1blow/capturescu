@@ -11,6 +11,9 @@ import AppKit
 
 struct DrawingSurfaceView: View {
   var capturedImage: CapturedPasteboardImage?
+  /// The visible canvas size. When set (capture flow), panning is clamped so the
+  /// 1:1 image can't be dragged past its own edges. Nil = no clamping (legacy).
+  var viewportSize: CGSize?
 
   @EnvironmentObject var toolsManager: ToolsManager
   @EnvironmentObject var markersManager: MarkersManager
@@ -29,8 +32,35 @@ struct DrawingSurfaceView: View {
   @State private var keyMonitor: Any?
   
 
-  init(capturedImage: CapturedPasteboardImage?) {
+  init(capturedImage: CapturedPasteboardImage?, viewportSize: CGSize? = nil) {
     self.capturedImage = capturedImage
+    self.viewportSize = viewportSize
+  }
+
+  /// Drag pans the image (instead of drawing) while the hand tool is selected
+  /// or the space bar is held.
+  private var isPanMode: Bool {
+    isSpacePressed || toolsManager.currentTool == .HandPointer
+  }
+
+  /// While the hand tool is active, hovering shows an open hand; otherwise the
+  /// active tool's own cursor is used.
+  private var activeCursor: CursorType {
+    toolsManager.currentTool == .HandPointer ? .move : eventManager.currentCursor
+  }
+
+  /// Keep the panned image within its own bounds: offset clamped to
+  /// [viewport - image, 0] per axis (collapses to 0 when the image fits).
+  private func clampedOffset(_ proposed: CGPoint) -> CGPoint {
+    guard let viewport = viewportSize, let image = capturedImage?.naturalSize else {
+      return proposed
+    }
+    let minX = min(0, viewport.width - image.width)
+    let minY = min(0, viewport.height - image.height)
+    return CGPoint(
+      x: max(minX, min(0, proposed.x)),
+      y: max(minY, min(0, proposed.y))
+    )
   }
 
   var body: some View {
@@ -145,7 +175,7 @@ struct DrawingSurfaceView: View {
         accessoryView
       }
     }
-    .cursor(eventManager.currentCursor)
+    .cursor(activeCursor)
     // TODO: Add keyboard shortcuts later
     // .onKeyPress(.delete) { _ in
     //     eventManager.handleKeyboardEvent(.delete)
@@ -161,17 +191,18 @@ struct DrawingSurfaceView: View {
     let location = value.location
     let translation = value.translation
 
-    // If space is pressed, handle canvas panning
-    if isSpacePressed {
+    // Hand tool or space bar → pan the canvas instead of drawing.
+    if isPanMode {
       // On drag start, save the current offset
       if translation.width == 0 && translation.height == 0 {
         panStartOffset = canvasOffset
+        NSCursor.closedHand.set()
       } else {
-        // Apply translation to the start offset
-        canvasOffset = CGPoint(
+        // Apply translation to the start offset, clamped to the image bounds
+        canvasOffset = clampedOffset(CGPoint(
           x: panStartOffset.x + translation.width,
           y: panStartOffset.y + translation.height
-        )
+        ))
       }
       return
     }
@@ -200,8 +231,11 @@ struct DrawingSurfaceView: View {
     let location = value.location
     let translation = value.translation
 
-    // If space was pressed, this was a pan gesture - no need to send events to tools
-    if isSpacePressed {
+    // If this was a pan gesture, don't send events to tools.
+    if isPanMode {
+      if toolsManager.currentTool == .HandPointer {
+        NSCursor.openHand.set() // release back to the open hand
+      }
       return
     }
 

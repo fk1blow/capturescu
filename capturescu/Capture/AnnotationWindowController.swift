@@ -19,7 +19,7 @@ final class AnnotationWindowController {
     private var annotationWindow: NSWindow?
     private var toolbarPanel: NSPanel?
     private var onClose: (() -> Void)?
-    private var copyKeyMonitor: Any?
+    private var keyMonitor: Any?
     private var focusObserver: NSObjectProtocol?
     private var isHidden = false
 
@@ -30,9 +30,19 @@ final class AnnotationWindowController {
     private var capturedImage: CapturedPasteboardImage!
 
     private let toolbarSize = CGSize(width: 280, height: 58)
-    private let toolbarGap: CGFloat = 12
+    /// How far the inside toolbar's bottom edge sits above the snapshot's bottom.
+    private let toolbarInsideInset: CGFloat = 16
+    private let borderWidth: CGFloat = 2
+    /// Keep the window this far from the screen edges, so the dashed border is
+    /// always visible and there's breathing room. Captures larger than the
+    /// resulting area are shown 1:1 and panned via the hand tool.
+    private let edgeMargin: CGFloat = 12
 
-    func present(image: CGImage, scale: CGFloat, at frame: CGRect, onClose: @escaping () -> Void) {
+    /// - Parameters:
+    ///   - imageSize: the snapshot's point size.
+    ///   - imageTopLeft: where the snapshot's top-left corner should sit, in
+    ///     global AppKit screen coordinates (y = the image's *top* edge).
+    func present(image: CGImage, scale: CGFloat, imageSize: CGSize, imageTopLeft: CGPoint, onClose: @escaping () -> Void) {
         self.onClose = onClose
 
         // Wire up the managers exactly like capturescuApp does.
@@ -48,10 +58,42 @@ final class AnnotationWindowController {
             originalPNGData: nil
         )
 
-        presentAnnotationWindow(at: frame)
-        presentToolbar(below: frame)
-        installCopyShortcut()
+        // Cap the visible viewport to the screen (minus a margin + the border
+        // ring). A screenshot that fits is shown whole; a bigger one is shown
+        // 1:1 and panned via the hand tool — we never zoom.
+        let visible = visibleFrame(containing: imageTopLeft)
+        let maxContent = CGSize(
+            width: visible.width - 2 * edgeMargin - 2 * borderWidth,
+            height: visible.height - 2 * edgeMargin - 2 * borderWidth
+        )
+        let viewport = CGSize(
+            width: min(imageSize.width, maxContent.width),
+            height: min(imageSize.height, maxContent.height)
+        )
+        let windowSize = CGSize(
+            width: viewport.width + 2 * borderWidth,
+            height: viewport.height + 2 * borderWidth
+        )
+
+        // Align the window so the snapshot's top-left lands on imageTopLeft
+        // (offset by the border ring), then clamp the whole window on-screen.
+        var originX = imageTopLeft.x - borderWidth
+        var originY = (imageTopLeft.y + borderWidth) - windowSize.height
+        originX = min(max(originX, visible.minX), visible.maxX - windowSize.width)
+        originY = min(max(originY, visible.minY), visible.maxY - windowSize.height)
+        let windowFrame = CGRect(origin: CGPoint(x: originX, y: originY), size: windowSize)
+
+        presentAnnotationWindow(viewportSize: viewport, at: windowFrame)
+        presentToolbar(for: windowFrame)
+        installKeyMonitor()
         startObservingFocus()
+    }
+
+    /// The visible frame (excludes menu bar / Dock) of the screen containing the
+    /// point, falling back to the main screen.
+    private func visibleFrame(containing point: CGPoint) -> CGRect {
+        let screen = NSScreen.screens.first { $0.frame.contains(point) } ?? NSScreen.main
+        return screen?.visibleFrame ?? (NSScreen.main?.visibleFrame ?? .zero)
     }
 
     // MARK: - Hide / reopen
@@ -82,7 +124,7 @@ final class AnnotationWindowController {
     private func hide() {
         guard !isHidden else { return }
         isHidden = true
-        removeCopyShortcut()
+        removeKeyMonitor()
         stopObservingFocus()
         toolbarPanel?.orderOut(nil)
         annotationWindow?.orderOut(nil)
@@ -95,46 +137,53 @@ final class AnnotationWindowController {
         annotationWindow?.makeKeyAndOrderFront(nil)
         toolbarPanel?.orderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
-        installCopyShortcut()
+        installKeyMonitor()
         startObservingFocus()
     }
 
-    // MARK: - ⌘C shortcut
+    // MARK: - Key shortcuts (⌘C, Esc)
 
-    /// ⌘C copies the annotated snapshot and dismisses the editor — unless the
-    /// user is typing into the text tool, where ⌘C must copy text normally.
-    private func installCopyShortcut() {
-        guard copyKeyMonitor == nil else { return }
-        copyKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+    /// ⌘C copies the annotated snapshot and dismisses the editor; Esc just
+    /// dismisses it. Both defer to an active text editor first, so typing a
+    /// space/Esc or copying selected text inside the text tool still works.
+    private func installKeyMonitor() {
+        guard keyMonitor == nil else { return }
+        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self else { return event }
 
+            // Esc dismisses the editor — unless a text field is capturing it.
+            if event.keyCode == 53 { // Escape
+                if NSApp.keyWindow?.firstResponder is NSText { return event }
+                self.close()
+                return nil
+            }
+
+            // ⌘C copies + closes — unless a text editor handles its own copy.
             let mods = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
-            guard mods == .command,
-                  event.charactersIgnoringModifiers?.lowercased() == "c" else {
-                return event
+            if mods == .command, event.charactersIgnoringModifiers?.lowercased() == "c" {
+                if NSApp.keyWindow?.firstResponder is NSText { return event }
+                self.copyAndClose()
+                return nil
             }
 
-            // Let an active text editor handle its own copy.
-            if NSApp.keyWindow?.firstResponder is NSText {
-                return event
-            }
-
-            self.copyAndClose()
-            return nil
+            return event
         }
     }
 
-    private func removeCopyShortcut() {
-        if let copyKeyMonitor {
-            NSEvent.removeMonitor(copyKeyMonitor)
+    private func removeKeyMonitor() {
+        if let keyMonitor {
+            NSEvent.removeMonitor(keyMonitor)
         }
-        copyKeyMonitor = nil
+        keyMonitor = nil
     }
 
     // MARK: - Windows
 
-    private func presentAnnotationWindow(at frame: CGRect) {
-        let view = CaptureAnnotationView(capturedImage: capturedImage)
+    private func presentAnnotationWindow(viewportSize: CGSize, at frame: CGRect) {
+        let view = CaptureAnnotationView(
+            capturedImage: capturedImage,
+            viewportSize: viewportSize
+        )
             .environmentObject(toolsManager)
             .environmentObject(markersManager)
             .environmentObject(eventManager)
@@ -147,7 +196,9 @@ final class AnnotationWindowController {
         )
         window.isOpaque = false
         window.backgroundColor = .clear
-        window.hasShadow = true
+        // No drop shadow — the dashed border is the only frame, so small
+        // snapshots don't get a gray shadow halo around them.
+        window.hasShadow = false
         window.level = .floating
         window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         window.contentView = NSHostingView(rootView: view)
@@ -158,7 +209,7 @@ final class AnnotationWindowController {
         annotationWindow = window
     }
 
-    private func presentToolbar(below frame: CGRect) {
+    private func presentToolbar(for frame: CGRect) {
         let toolbarFrame = toolbarFrame(for: frame)
 
         let view = MiniToolbarView(
@@ -176,7 +227,9 @@ final class AnnotationWindowController {
             defer: false
         )
         panel.isFloatingPanel = true
-        panel.level = .floating
+        // One level above the annotation window (.floating) so the toolbar is
+        // never covered when the snapshot window is clicked/reordered.
+        panel.level = NSWindow.Level(rawValue: NSWindow.Level.floating.rawValue + 1)
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.hasShadow = true
@@ -188,18 +241,14 @@ final class AnnotationWindowController {
         toolbarPanel = panel
     }
 
-    /// Centre the toolbar just below the region, flipping above and clamping to
-    /// the screen when there isn't room.
+    /// The toolbar always floats *inside* the snapshot, over the bottom-centre.
+    /// X is clamped to the visible screen so it stays reachable even when the
+    /// snapshot is narrower than the toolbar.
     private func toolbarFrame(for frame: CGRect) -> CGRect {
+        let visible = (annotationWindow?.screen ?? NSScreen.main)?.visibleFrame ?? frame
         var originX = frame.midX - toolbarSize.width / 2
-        var originY = frame.minY - toolbarSize.height - toolbarGap // below (AppKit: lower Y)
-
-        let visible = (annotationWindow?.screen ?? NSScreen.main)?.frame ?? frame
-        if originY < visible.minY + 8 {
-            originY = frame.maxY + toolbarGap // not enough room below → place above
-        }
         originX = min(max(originX, visible.minX + 8), visible.maxX - toolbarSize.width - 8)
-
+        let originY = frame.minY + toolbarInsideInset // AppKit: minY is the bottom edge
         return CGRect(origin: CGPoint(x: originX, y: originY), size: toolbarSize)
     }
 
@@ -225,7 +274,7 @@ final class AnnotationWindowController {
     }
 
     func close() {
-        removeCopyShortcut()
+        removeKeyMonitor()
         stopObservingFocus()
         toolbarPanel?.orderOut(nil)
         toolbarPanel = nil

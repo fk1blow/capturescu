@@ -64,6 +64,7 @@ enum ToolSwitchRequest {
     case lineTool
     case arrowTool
     case selectionTool
+    case handTool
 }
 
 /// Response from a tool after handling an event

@@ -26,6 +26,7 @@ class EventManager: ObservableObject {
   private let lineTool: LinePointerTool
   private let arrowTool: ArrowPointerTool
   private let selectionTool: SelectionTool
+  private let handTool: HandPointerTool
 
   init(markersManager: MarkersManager, toolsManager: ToolsManager) {
     self.markersManager = markersManager
@@ -53,6 +54,7 @@ class EventManager: ObservableObject {
     selectionTool = SelectionTool(
       markerFinder: markerFinder
     )
+    handTool = HandPointerTool()
 
     // Start with text tool (matching current default)
     currentTool = textTool
@@ -134,6 +136,8 @@ class EventManager: ObservableObject {
       currentTool = arrowTool
     case .selectionTool:
       currentTool = selectionTool
+    case .handTool:
+      currentTool = handTool
     }
 
     // Update tools manager to keep UI in sync
@@ -153,6 +157,8 @@ class EventManager: ObservableObject {
       toolsManager.selectTool(named: .ArrowPointer)
     case .selectionTool:
       toolsManager.selectTool(named: .SelectionPointer)
+    case .handTool:
+      toolsManager.selectTool(named: .HandPointer)
     }
   }
 
@@ -171,6 +177,8 @@ class EventManager: ObservableObject {
       toolRequest = .arrowTool
     case .SelectionPointer:
       toolRequest = .selectionTool
+    case .HandPointer:
+      toolRequest = .handTool
     }
 
     switchTool(to: toolRequest)

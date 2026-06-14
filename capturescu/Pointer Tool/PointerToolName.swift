@@ -14,4 +14,5 @@ enum PointerToolName {
     case LinePointer
     case TextPointer
     case SelectionPointer
+    case HandPointer
 }

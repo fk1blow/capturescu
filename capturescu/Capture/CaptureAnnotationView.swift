@@ -3,28 +3,32 @@
 //  capturescu
 //
 //  The "snapshot editor" surface. It's intentionally thin: it reuses the
-//  existing DrawingSurfaceView, feeding it the cropped capture positioned at
-//  the origin (top-left). The window can be larger than the snapshot (minimum
-//  size for tiny captures), so a gray background fills the remaining area.
-//  Tool/marker state comes from the environment objects injected by
-//  AnnotationWindowController.
+//  existing DrawingSurfaceView, rendered at the viewport size (the visible image
+//  area, capped to the screen). A dashed/interrupted white border always frames
+//  the snapshot — drawn as a stroke in a 2px padding ring around the viewport,
+//  so it never covers the image. When the screenshot is bigger than the
+//  viewport, the hand tool pans it 1:1 inside this frame. Tool/marker state
+//  comes from the environment objects injected by AnnotationWindowController.
 //
 
 import SwiftUI
 
 struct CaptureAnnotationView: View {
     let capturedImage: CapturedPasteboardImage
+    let viewportSize: CGSize
+
+    private let borderWidth: CGFloat = 2
 
     var body: some View {
-        ZStack(alignment: .topLeading) {
-            // Fills the window; the opaque snapshot covers its top-left region
-            // and this shows through wherever the snapshot doesn't reach.
-            Color(hex: "#3C3C3C")
-                .ignoresSafeArea()
-
-            DrawingSurfaceView(capturedImage: capturedImage)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .ignoresSafeArea()
-        }
+        DrawingSurfaceView(capturedImage: capturedImage, viewportSize: viewportSize)
+            .frame(width: viewportSize.width, height: viewportSize.height)
+            .clipped()
+            .padding(borderWidth)
+            .overlay(
+                Rectangle().strokeBorder(
+                    Color.white,
+                    style: StrokeStyle(lineWidth: borderWidth, dash: [6, 4])
+                )
+            )
     }
 }
