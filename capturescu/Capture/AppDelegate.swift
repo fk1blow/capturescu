@@ -12,18 +12,26 @@ import SwiftUI
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let flowController = ScreenCaptureFlowController()
-    private var hotKey: GlobalHotKey?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        hotKey = GlobalHotKey(
+        // Meh+G — capture a new region.
+        HotKeyCenter.shared.register(
+            id: 1,
             keyCode: CaptureHotKey.keyCode,
             modifiers: CaptureHotKey.modifiers
         ) { [weak self] in
             // Carbon delivers on the main thread; hop onto the main actor to
             // touch the @MainActor flow controller.
-            Task { @MainActor in
-                self?.flowController.beginCapture()
-            }
+            Task { @MainActor in self?.flowController.beginCapture() }
+        }
+
+        // Meh+Z — reopen the last snapshot editor (after it auto-hid on focus loss).
+        HotKeyCenter.shared.register(
+            id: 2,
+            keyCode: ReopenHotKey.keyCode,
+            modifiers: ReopenHotKey.modifiers
+        ) { [weak self] in
+            Task { @MainActor in self?.flowController.reopenLastCapture() }
         }
     }
 }

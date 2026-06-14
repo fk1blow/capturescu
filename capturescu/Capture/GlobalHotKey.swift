@@ -2,72 +2,89 @@
 //  GlobalHotKey.swift
 //  capturescu
 //
-//  Thin wrapper around the Carbon RegisterEventHotKey API. This gives us a
-//  system-wide hotkey that fires even when Capturescu isn't the frontmost
-//  app, without needing the Accessibility / Input Monitoring permission that
-//  NSEvent global monitors require. Works under the App Sandbox.
+//  System-wide hotkeys via the Carbon RegisterEventHotKey API. These fire even
+//  when Capturescu isn't frontmost, without the Accessibility / Input Monitoring
+//  permission that NSEvent global monitors require, and work under the App Sandbox.
+//
+//  HotKeyCenter installs a SINGLE app event handler and dispatches to per-hotkey
+//  callbacks by id — registering one handler per hotkey would mis-fire (the most
+//  recently installed handler swallows the event for all hotkeys).
 //
 
 import AppKit
 import Carbon.HIToolbox
 
-/// Default capture hotkey: Meh+G (⌃⌥⇧G). The "Meh" combo (Control+Option+Shift,
-/// no Command) almost never collides with system or app shortcuts.
+/// Capture hotkey: Meh+G (⌃⌥⇧G). The "Meh" combo (Control+Option+Shift, no
+/// Command) almost never collides with system or app shortcuts.
 enum CaptureHotKey {
     static let keyCode = UInt32(kVK_ANSI_G)
     static let modifiers = UInt32(controlKey | optionKey | shiftKey)
 }
 
-final class GlobalHotKey {
-    private var hotKeyRef: EventHotKeyRef?
-    private var eventHandlerRef: EventHandlerRef?
-    private let callback: () -> Void
+/// Reopen-last-snapshot hotkey: Meh+Z (⌃⌥⇧Z).
+enum ReopenHotKey {
+    static let keyCode = UInt32(kVK_ANSI_Z)
+    static let modifiers = UInt32(controlKey | optionKey | shiftKey)
+}
+
+final class HotKeyCenter {
+    static let shared = HotKeyCenter()
+
+    private var callbacks: [UInt32: () -> Void] = [:]
+    private var refs: [UInt32: EventHotKeyRef] = [:]
+    private var handlerInstalled = false
 
     // Four-char code 'CPSC' used as the hotkey signature.
     private static let signature = OSType(0x4350_5343)
 
-    init(keyCode: UInt32, modifiers: UInt32, callback: @escaping () -> Void) {
-        self.callback = callback
-        register(keyCode: keyCode, modifiers: modifiers)
+    private init() {}
+
+    /// Register a system-wide hotkey. `id` must be unique per hotkey.
+    func register(id: UInt32, keyCode: UInt32, modifiers: UInt32, callback: @escaping () -> Void) {
+        installHandlerIfNeeded()
+        callbacks[id] = callback
+
+        var ref: EventHotKeyRef?
+        let hotKeyID = EventHotKeyID(signature: HotKeyCenter.signature, id: id)
+        RegisterEventHotKey(keyCode, modifiers, hotKeyID, GetApplicationEventTarget(), 0, &ref)
+        refs[id] = ref
     }
 
-    private func register(keyCode: UInt32, modifiers: UInt32) {
+    private func installHandlerIfNeeded() {
+        guard !handlerInstalled else { return }
+        handlerInstalled = true
+
         var eventType = EventTypeSpec(
             eventClass: OSType(kEventClassKeyboard),
             eventKind: UInt32(kEventHotKeyPressed)
         )
 
-        let selfPtr = Unmanaged.passUnretained(self).toOpaque()
-
-        // The C handler must be a non-capturing function pointer; recover `self`
-        // from the userData pointer we pass in.
         InstallEventHandler(
             GetApplicationEventTarget(),
-            { (_, _, userData) -> OSStatus in
-                guard let userData else { return noErr }
-                let hotKey = Unmanaged<GlobalHotKey>.fromOpaque(userData).takeUnretainedValue()
-                hotKey.callback()
+            { (_, eventRef, _) -> OSStatus in
+                var hotKeyID = EventHotKeyID()
+                let status = GetEventParameter(
+                    eventRef,
+                    EventParamName(kEventParamDirectObject),
+                    EventParamType(typeEventHotKeyID),
+                    nil,
+                    MemoryLayout<EventHotKeyID>.size,
+                    nil,
+                    &hotKeyID
+                )
+                if status == noErr {
+                    HotKeyCenter.shared.dispatch(id: hotKeyID.id)
+                }
                 return noErr
             },
             1,
             &eventType,
-            selfPtr,
-            &eventHandlerRef
-        )
-
-        let hotKeyID = EventHotKeyID(signature: GlobalHotKey.signature, id: 1)
-        RegisterEventHotKey(
-            keyCode,
-            modifiers,
-            hotKeyID,
-            GetApplicationEventTarget(),
-            0,
-            &hotKeyRef
+            nil,
+            nil
         )
     }
 
-    deinit {
-        if let hotKeyRef { UnregisterEventHotKey(hotKeyRef) }
-        if let eventHandlerRef { RemoveEventHandler(eventHandlerRef) }
+    private func dispatch(id: UInt32) {
+        callbacks[id]?()
     }
 }

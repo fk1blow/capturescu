@@ -37,7 +37,7 @@ struct RegionSelectionView: View {
                 if hasSelection {
                     dimmed.addRect(selection)
                 }
-                ctx.fill(dimmed, with: .color(.black.opacity(0.8)), style: FillStyle(eoFill: true))
+                ctx.fill(dimmed, with: .color(.black.opacity(0.5)), style: FillStyle(eoFill: true))
             }
             .ignoresSafeArea()
 

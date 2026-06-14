@@ -19,6 +19,9 @@ final class AnnotationWindowController {
     private var annotationWindow: NSWindow?
     private var toolbarPanel: NSPanel?
     private var onClose: (() -> Void)?
+    private var copyKeyMonitor: Any?
+    private var focusObserver: NSObjectProtocol?
+    private var isHidden = false
 
     // Fresh state, independent of the main window.
     private let toolsManager = ToolsManager()
@@ -47,6 +50,85 @@ final class AnnotationWindowController {
 
         presentAnnotationWindow(at: frame)
         presentToolbar(below: frame)
+        installCopyShortcut()
+        startObservingFocus()
+    }
+
+    // MARK: - Hide / reopen
+
+    /// The snapshot editor auto-hides when the app loses focus (the user clicks
+    /// another app), preserving all state, and can be brought back with Meh+Z.
+    /// We observe the app-level resign-active notification — NOT window-level
+    /// resign-key — so moving between our own annotation window and the
+    /// (non-activating) toolbar panel doesn't trigger a hide.
+    private func startObservingFocus() {
+        guard focusObserver == nil else { return }
+        focusObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.didResignActiveNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in self?.hide() }
+        }
+    }
+
+    private func stopObservingFocus() {
+        if let focusObserver {
+            NotificationCenter.default.removeObserver(focusObserver)
+        }
+        focusObserver = nil
+    }
+
+    private func hide() {
+        guard !isHidden else { return }
+        isHidden = true
+        removeCopyShortcut()
+        stopObservingFocus()
+        toolbarPanel?.orderOut(nil)
+        annotationWindow?.orderOut(nil)
+        // Keep the windows + managers alive so reopen() can restore everything.
+    }
+
+    func reopen() {
+        guard isHidden else { return }
+        isHidden = false
+        annotationWindow?.makeKeyAndOrderFront(nil)
+        toolbarPanel?.orderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        installCopyShortcut()
+        startObservingFocus()
+    }
+
+    // MARK: - ⌘C shortcut
+
+    /// ⌘C copies the annotated snapshot and dismisses the editor — unless the
+    /// user is typing into the text tool, where ⌘C must copy text normally.
+    private func installCopyShortcut() {
+        guard copyKeyMonitor == nil else { return }
+        copyKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self else { return event }
+
+            let mods = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+            guard mods == .command,
+                  event.charactersIgnoringModifiers?.lowercased() == "c" else {
+                return event
+            }
+
+            // Let an active text editor handle its own copy.
+            if NSApp.keyWindow?.firstResponder is NSText {
+                return event
+            }
+
+            self.copyAndClose()
+            return nil
+        }
+    }
+
+    private func removeCopyShortcut() {
+        if let copyKeyMonitor {
+            NSEvent.removeMonitor(copyKeyMonitor)
+        }
+        copyKeyMonitor = nil
     }
 
     // MARK: - Windows
@@ -80,7 +162,7 @@ final class AnnotationWindowController {
         let toolbarFrame = toolbarFrame(for: frame)
 
         let view = MiniToolbarView(
-            copyAction: { [weak self] in self?.copyToClipboard() },
+            copyAction: { [weak self] in self?.copyAndClose() },
             closeAction: { [weak self] in self?.close() }
         )
         .environmentObject(toolsManager)
@@ -137,7 +219,14 @@ final class AnnotationWindowController {
         }
     }
 
+    private func copyAndClose() {
+        copyToClipboard()
+        close()
+    }
+
     func close() {
+        removeCopyShortcut()
+        stopObservingFocus()
         toolbarPanel?.orderOut(nil)
         toolbarPanel = nil
         annotationWindow?.orderOut(nil)
