@@ -70,67 +70,83 @@ final class AnnotationWindowController {
             originalPNGData: nil
         )
 
-        // The window content is the image region plus a band below it that holds
-        // the toolbar, so the dashed border (drawn around the whole content) always
-        // wraps both. The width reserves `toolbarSidePadding` on each side of the
-        // centered toolbar. A screenshot too tall to leave room for the band is
-        // shown 1:1 and panned, with the toolbar overlapping its bottom instead.
-        let toolbarBand = toolbarTopGap + toolbarSize.height + toolbarInsideInset
+        // The dashed border frames *only* the image region — it is the capture
+        // rectangle, so nothing but the image lives inside it. The toolbar
+        // normally sits in its own band *below* the border. Only when the image +
+        // border + that band can't fit on screen does the image clamp to the
+        // monitor and the toolbar overlap its bottom (pan to see underneath). The
+        // width reserves `toolbarSidePadding` on each side so the centered toolbar
+        // always spans within the window.
+        let toolbarBelow = toolbarTopGap + toolbarSize.height
 
+        // Max area for the image region (border excluded). A nil screen means we
+        // can't determine a max, so don't clamp: show natural size and rely on
+        // pan, and never overlap.
         let visible = visibleFrame(containing: imageTopLeft)
-        let maxContent = CGSize(
-            width: visible.width - 2 * edgeMargin - 2 * borderWidth,
-            height: visible.height - 2 * edgeMargin - 2 * borderWidth
-        )
+        let maxContent: CGSize
+        if let visible {
+            maxContent = CGSize(
+                width: visible.width - 2 * edgeMargin - 2 * borderWidth,
+                height: visible.height - 2 * edgeMargin - 2 * borderWidth
+            )
+        } else {
+            maxContent = CGSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+        }
 
         let minWidth = toolbarSize.width + 2 * toolbarSidePadding
         let contentWidth = min(max(imageSize.width, minWidth), maxContent.width)
 
+        // Room for the band below the border? Yes → toolbar sits below it.
+        // No → image fills the available height and the toolbar overlaps it.
+        let fits = imageSize.height + toolbarBelow <= maxContent.height
         let imageAreaHeight: CGFloat
-        let contentHeight: CGFloat
-        if imageSize.height + toolbarBand <= maxContent.height {
-            // Room: reserve the band, toolbar sits below the image (no overlap).
-            imageAreaHeight = min(max(imageSize.height, minImageAreaHeight), maxContent.height - toolbarBand)
-            contentHeight = imageAreaHeight + toolbarBand
+        let toolbarOverlaps: Bool
+        if fits {
+            imageAreaHeight = min(max(imageSize.height, minImageAreaHeight), maxContent.height - toolbarBelow)
+            toolbarOverlaps = false
         } else {
-            // No room: image fills the window and the toolbar overlaps its bottom
-            // (pan to see underneath).
-            contentHeight = min(imageSize.height, maxContent.height)
-            imageAreaHeight = contentHeight
+            imageAreaHeight = min(imageSize.height, maxContent.height)
+            toolbarOverlaps = true
         }
-        let content = CGSize(width: contentWidth, height: contentHeight)
+
+        // The window content is just the image region; the dashed border wraps it.
+        let content = CGSize(width: contentWidth, height: imageAreaHeight)
         let windowSize = CGSize(
             width: content.width + 2 * borderWidth,
             height: content.height + 2 * borderWidth
         )
 
-        // Center the image horizontally in the content and vertically within the
-        // image region (above the band). Baked into the canvas offset so markers
-        // and the clipboard export stay aligned.
+        // Center the image within the region. Baked into the canvas offset so
+        // markers and the clipboard export stay aligned.
         let centerOffset = CGPoint(
             x: max(0, (content.width - imageSize.width) / 2),
-            y: max(0, (imageAreaHeight - imageSize.height) / 2)
+            y: max(0, (content.height - imageSize.height) / 2)
         )
 
         // Place the window so the image's top-left lands on imageTopLeft, then
-        // clamp the whole window on-screen.
+        // clamp on-screen (when a screen is known), reserving the toolbar band
+        // below the window unless the toolbar overlaps the image.
         var originX = imageTopLeft.x - borderWidth - centerOffset.x
         var originY = (imageTopLeft.y + borderWidth + centerOffset.y) - windowSize.height
-        originX = min(max(originX, visible.minX), visible.maxX - windowSize.width)
-        originY = min(max(originY, visible.minY), visible.maxY - windowSize.height)
+        if let visible {
+            originX = min(max(originX, visible.minX + edgeMargin), visible.maxX - edgeMargin - windowSize.width)
+            let reserveBelow = toolbarOverlaps ? edgeMargin : edgeMargin + toolbarBelow
+            originY = min(max(originY, visible.minY + reserveBelow), visible.maxY - edgeMargin - windowSize.height)
+        }
         let windowFrame = CGRect(origin: CGPoint(x: originX, y: originY), size: windowSize)
 
         presentAnnotationWindow(viewportSize: content, initialCanvasOffset: centerOffset, at: windowFrame)
-        presentToolbar(for: windowFrame)
+        presentToolbar(for: windowFrame, overlaps: toolbarOverlaps)
         installKeyMonitor()
         startObservingFocus()
     }
 
     /// The visible frame (excludes menu bar / Dock) of the screen containing the
-    /// point, falling back to the main screen.
-    private func visibleFrame(containing point: CGPoint) -> CGRect {
+    /// point, falling back to the main screen. Nil when AppKit reports no screen
+    /// at all — the caller then shows the capture at natural size and pans.
+    private func visibleFrame(containing point: CGPoint) -> CGRect? {
         let screen = NSScreen.screens.first { $0.frame.contains(point) } ?? NSScreen.main
-        return screen?.visibleFrame ?? (NSScreen.main?.visibleFrame ?? .zero)
+        return screen?.visibleFrame
     }
 
     // MARK: - Hide / reopen
@@ -263,8 +279,8 @@ final class AnnotationWindowController {
         return size.width > 0 ? size : CGSize(width: 280, height: 58)
     }
 
-    private func presentToolbar(for frame: CGRect) {
-        let toolbarFrame = toolbarFrame(for: frame)
+    private func presentToolbar(for frame: CGRect, overlaps: Bool) {
+        let toolbarFrame = toolbarFrame(for: frame, overlaps: overlaps)
 
         let view = MiniToolbarView(
             copyAction: { [weak self] in self?.copyAndClose() },
@@ -295,14 +311,20 @@ final class AnnotationWindowController {
         toolbarPanel = panel
     }
 
-    /// The toolbar always floats *inside* the snapshot, over the bottom-centre.
-    /// X is clamped to the visible screen so it stays reachable even when the
-    /// snapshot is narrower than the toolbar.
-    private func toolbarFrame(for frame: CGRect) -> CGRect {
+    /// The toolbar is centered horizontally under the snapshot. By default it
+    /// sits in a band *below* the dashed border; when `overlaps` is true (the
+    /// image filled the screen) it floats *inside*, over the bottom edge. X is
+    /// clamped to the visible screen so it stays reachable even when the snapshot
+    /// is narrower than the toolbar.
+    private func toolbarFrame(for frame: CGRect, overlaps: Bool) -> CGRect {
         let visible = (annotationWindow?.screen ?? NSScreen.main)?.visibleFrame ?? frame
         var originX = frame.midX - toolbarSize.width / 2
         originX = min(max(originX, visible.minX + 8), visible.maxX - toolbarSize.width - 8)
-        let originY = frame.minY + toolbarInsideInset // AppKit: minY is the bottom edge
+        // AppKit: minY is the bottom edge. Below = step down past the gap + the
+        // toolbar's own height; overlap = inset up from the window's bottom.
+        let originY = overlaps
+            ? frame.minY + toolbarInsideInset
+            : frame.minY - toolbarTopGap - toolbarSize.height
         return CGRect(origin: CGPoint(x: originX, y: originY), size: toolbarSize)
     }
 
