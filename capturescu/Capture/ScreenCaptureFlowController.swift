@@ -34,12 +34,6 @@ final class ScreenCaptureFlowController {
         }
     }
 
-    /// Bring back the snapshot editor after it auto-hid on focus loss (Meh+Z).
-    /// No-op if there's no retained session.
-    func reopenLastCapture() {
-        annotationController?.reopen()
-    }
-
     // MARK: - Selection
 
     private func startSelection(with result: ScreenCaptureResult) {

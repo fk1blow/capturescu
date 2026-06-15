@@ -21,12 +21,6 @@ enum CaptureHotKey {
     static let modifiers = UInt32(controlKey | optionKey | shiftKey)
 }
 
-/// Reopen-last-snapshot hotkey: Meh+Z (⌃⌥⇧Z).
-enum ReopenHotKey {
-    static let keyCode = UInt32(kVK_ANSI_Z)
-    static let modifiers = UInt32(controlKey | optionKey | shiftKey)
-}
-
 final class HotKeyCenter {
     static let shared = HotKeyCenter()
 

@@ -20,8 +20,7 @@ final class AnnotationWindowController {
     private var toolbarPanel: NSPanel?
     private var onClose: (() -> Void)?
     private var keyMonitor: Any?
-    private var focusObserver: NSObjectProtocol?
-    private var isHidden = false
+    private var clickOutsideMonitor: Any?
 
     // Fresh state, independent of the main window.
     private let toolsManager = ToolsManager()
@@ -138,7 +137,7 @@ final class AnnotationWindowController {
         presentAnnotationWindow(viewportSize: content, initialCanvasOffset: centerOffset, at: windowFrame)
         presentToolbar(for: windowFrame, overlaps: toolbarOverlaps)
         installKeyMonitor()
-        startObservingFocus()
+        installClickOutsideMonitor()
     }
 
     /// The visible frame (excludes menu bar / Dock) of the screen containing the
@@ -149,54 +148,38 @@ final class AnnotationWindowController {
         return screen?.visibleFrame
     }
 
-    // MARK: - Hide / reopen
+    // MARK: - Dismiss on click-outside
 
-    /// The snapshot editor auto-hides when the app loses focus (the user clicks
-    /// another app), preserving all state, and can be brought back with Meh+Z.
-    /// We observe the app-level resign-active notification — NOT window-level
-    /// resign-key — so moving between our own annotation window and the
-    /// (non-activating) toolbar panel doesn't trigger a hide.
-    private func startObservingFocus() {
-        guard focusObserver == nil else { return }
-        focusObserver = NotificationCenter.default.addObserver(
-            forName: NSApplication.didResignActiveNotification,
-            object: nil,
-            queue: .main
+    /// The snapshot editor dismisses when the user presses the mouse anywhere
+    /// outside it. We use a *global* mouse-down monitor, which fires only for
+    /// presses delivered to other apps — never for clicks on our own annotation
+    /// window or toolbar panel. That makes the "click-away" gesture exact:
+    ///
+    ///   • A genuine click outside is a mouse-DOWN over another app/desktop →
+    ///     the monitor fires → close.
+    ///   • Panning the snapshot and releasing the mouse outside our window is a
+    ///     mouse-UP — the press originated inside, so the drag is captured by our
+    ///     window for its whole lifetime and no global mouse-DOWN ever fires →
+    ///     the editor correctly stays open.
+    ///
+    /// Because the discriminator is the *press* location rather than a focus
+    /// change, there's no timing heuristic needed to tell a pan-release apart
+    /// from a click-away. (Global monitors are observe-only — the press still
+    /// reaches the other app; we just also dismiss.)
+    private func installClickOutsideMonitor() {
+        guard clickOutsideMonitor == nil else { return }
+        clickOutsideMonitor = NSEvent.addGlobalMonitorForEvents(
+            matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]
         ) { [weak self] _ in
-            Task { @MainActor in self?.hide() }
+            Task { @MainActor in self?.close() }
         }
     }
 
-    private func stopObservingFocus() {
-        if let focusObserver {
-            NotificationCenter.default.removeObserver(focusObserver)
+    private func removeClickOutsideMonitor() {
+        if let clickOutsideMonitor {
+            NSEvent.removeMonitor(clickOutsideMonitor)
         }
-        focusObserver = nil
-    }
-
-    private func hide() {
-        guard !isHidden else { return }
-        // Don't hide because of the focus loss caused by a pan/drag that just
-        // ended outside the window — only on a genuine app switch.
-        if let last = eventManager.lastCanvasDragAt, Date().timeIntervalSince(last) < 0.6 {
-            return
-        }
-        isHidden = true
-        removeKeyMonitor()
-        stopObservingFocus()
-        toolbarPanel?.orderOut(nil)
-        annotationWindow?.orderOut(nil)
-        // Keep the windows + managers alive so reopen() can restore everything.
-    }
-
-    func reopen() {
-        guard isHidden else { return }
-        isHidden = false
-        annotationWindow?.makeKeyAndOrderFront(nil)
-        toolbarPanel?.orderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
-        installKeyMonitor()
-        startObservingFocus()
+        clickOutsideMonitor = nil
     }
 
     // MARK: - Key shortcuts (⌘C, Esc)
@@ -351,7 +334,7 @@ final class AnnotationWindowController {
 
     func close() {
         removeKeyMonitor()
-        stopObservingFocus()
+        removeClickOutsideMonitor()
         toolbarPanel?.orderOut(nil)
         toolbarPanel = nil
         annotationWindow?.orderOut(nil)

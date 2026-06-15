@@ -14,11 +14,6 @@ class EventManager: ObservableObject {
   @Published var currentCursor: CursorType = .default
   @Published var canvasUpdateTrigger: Bool = false
 
-  /// Timestamp of the most recent canvas drag (pan or draw). The annotation
-  /// controller uses this to ignore the app-resign-active that fires when a
-  /// drag is released outside the window, so the editor doesn't hide.
-  var lastCanvasDragAt: Date?
-
   private var currentTool: PointerTool
   var markersManager: MarkersManager
   var toolsManager: ToolsManager

@@ -24,14 +24,5 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // touch the @MainActor flow controller.
             Task { @MainActor in self?.flowController.beginCapture() }
         }
-
-        // Meh+Z — reopen the last snapshot editor (after it auto-hid on focus loss).
-        HotKeyCenter.shared.register(
-            id: 2,
-            keyCode: ReopenHotKey.keyCode,
-            modifiers: ReopenHotKey.modifiers
-        ) { [weak self] in
-            Task { @MainActor in self?.flowController.reopenLastCapture() }
-        }
     }
 }

@@ -198,9 +198,6 @@ struct DrawingSurfaceView: View {
     let location = value.location
     let translation = value.translation
 
-    // Record the drag so the controller won't auto-hide if it ends outside.
-    eventManager.lastCanvasDragAt = Date()
-
     // Hand tool or space bar → pan the canvas instead of drawing.
     if isPanMode {
       // On drag start, save the current offset
@@ -240,9 +237,6 @@ struct DrawingSurfaceView: View {
   private func handleDragEnded(_ value: DragGesture.Value) {
     let location = value.location
     let translation = value.translation
-
-    // Record the drag so the controller won't auto-hide if it ended outside.
-    eventManager.lastCanvasDragAt = Date()
 
     // If this was a pan gesture, don't send events to tools.
     if isPanMode {
