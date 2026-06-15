@@ -34,12 +34,7 @@ final class AnnotationWindowController {
     private let toolbarInsideInset: CGFloat = 16
     /// Gap between the image's bottom edge and the toolbar's top edge.
     private let toolbarTopGap: CGFloat = 24
-    /// Clearance reserved between the centered toolbar and each window edge.
-    private let toolbarSidePadding: CGFloat = 120
     private let borderWidth: CGFloat = 2
-    /// Smallest image region, so tiny captures stay usable (the toolbar band is
-    /// added below it; width is derived from the measured toolbar — see `present`).
-    private let minImageAreaHeight: CGFloat = 160
     /// Keep the window this far from the screen edges, so the dashed border is
     /// always visible and there's breathing room. Captures larger than the
     /// resulting area are shown 1:1 and panned via the hand tool.
@@ -74,8 +69,8 @@ final class AnnotationWindowController {
         // normally sits in its own band *below* the border. Only when the image +
         // border + that band can't fit on screen does the image clamp to the
         // monitor and the toolbar overlap its bottom (pan to see underneath). The
-        // width reserves `toolbarSidePadding` on each side so the centered toolbar
-        // always spans within the window.
+        // window hugs the snapshot exactly; the centered toolbar simply overhangs
+        // the sides when the snapshot is narrower than it.
         let toolbarBelow = toolbarTopGap + toolbarSize.height
 
         // Max area for the image region (border excluded). A nil screen means we
@@ -92,8 +87,7 @@ final class AnnotationWindowController {
             maxContent = CGSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
         }
 
-        let minWidth = toolbarSize.width + 2 * toolbarSidePadding
-        let contentWidth = min(max(imageSize.width, minWidth), maxContent.width)
+        let contentWidth = min(imageSize.width, maxContent.width)
 
         // Room for the band below the border? Yes → toolbar sits below it.
         // No → image fills the available height and the toolbar overlaps it.
@@ -101,7 +95,7 @@ final class AnnotationWindowController {
         let imageAreaHeight: CGFloat
         let toolbarOverlaps: Bool
         if fits {
-            imageAreaHeight = min(max(imageSize.height, minImageAreaHeight), maxContent.height - toolbarBelow)
+            imageAreaHeight = min(imageSize.height, maxContent.height - toolbarBelow)
             toolbarOverlaps = false
         } else {
             imageAreaHeight = min(imageSize.height, maxContent.height)
