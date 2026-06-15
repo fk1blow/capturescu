@@ -24,6 +24,10 @@ struct RegionSelectionView: View {
         selection.width > 0 && selection.height > 0
     }
 
+    /// Matches CaptureAnnotationView's border so the live frame and the snapshot
+    /// frame line up pixel-for-pixel.
+    private let borderWidth: CGFloat = 2
+
     var body: some View {
         ZStack(alignment: .topLeading) {
             // Frozen screen at its natural point size.
@@ -44,8 +48,12 @@ struct RegionSelectionView: View {
             // Selection border + size readout.
             if hasSelection {
                 Rectangle()
-                    .strokeBorder(Color.white, lineWidth: 1)
-                    .frame(width: selection.width, height: selection.height)
+                    // Same dashed border as the snapshot editor (see
+                    // CaptureAnnotationView), drawn just *outside* the selection
+                    // rect — the snapshot frames the image from outside too, so
+                    // the border doesn't shift by ~2px when the editor appears.
+                    .strokeBorder(Color.white, style: StrokeStyle(lineWidth: borderWidth, dash: [6, 4]))
+                    .frame(width: selection.width + 2 * borderWidth, height: selection.height + 2 * borderWidth)
                     .position(x: selection.midX, y: selection.midY)
 
                 Text("\(Int(selection.width)) × \(Int(selection.height))")
