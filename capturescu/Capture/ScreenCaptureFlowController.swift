@@ -63,34 +63,20 @@ final class ScreenCaptureFlowController {
         let scale = capture.scale
         let screenFrame = capture.screenFrame
 
-        // Selection (top-left view points) → pixel rect in the captured image.
-        let pixelRect = CGRect(
-            x: selectionPoints.minX * scale,
-            y: selectionPoints.minY * scale,
-            width: selectionPoints.width * scale,
-            height: selectionPoints.height * scale
-        ).integral
-
-        let imageBounds = CGRect(x: 0, y: 0, width: capture.fullImage.width, height: capture.fullImage.height)
-        let cropRect = pixelRect.intersection(imageBounds)
-
-        guard cropRect.width >= 1, cropRect.height >= 1,
-              let cropped = capture.fullImage.cropping(to: cropRect) else { return }
-
-        // Snapshot point size derived from the actual cropped pixels (avoids
-        // half-pixel drift between the crop and the window).
-        let pointSize = CGSize(width: cropRect.width / scale, height: cropRect.height / scale)
-
-        // Where the snapshot's top-left corner should land, in global AppKit
-        // screen coordinates (bottom-left origin → flip Y; this y is the image's
-        // top edge). The controller owns capping/centring/clamping from here.
-        let imageTopLeft = CGPoint(
-            x: screenFrame.minX + selectionPoints.minX,
-            y: screenFrame.minY + screenFrame.height - selectionPoints.minY
+        // Keep the WHOLE frozen image: resizing the editor reveals more of it
+        // rather than re-capturing (a video underneath would have advanced). The
+        // selection is already in image-point space (the overlay maps 1:1 to the
+        // image); just clamp it to the image bounds.
+        let imagePointSize = CGSize(
+            width: CGFloat(capture.fullImage.width) / scale,
+            height: CGFloat(capture.fullImage.height) / scale
         )
+        let selection = selectionPoints.intersection(CGRect(origin: .zero, size: imagePointSize))
+
+        guard selection.width >= 1, selection.height >= 1 else { return }
 
         let controller = AnnotationWindowController()
-        controller.present(image: cropped, scale: scale, imageSize: pointSize, imageTopLeft: imageTopLeft) { [weak self] in
+        controller.present(fullImage: capture.fullImage, scale: scale, screenFrame: screenFrame, selection: selection) { [weak self] in
             self?.annotationController = nil
         }
         annotationController = controller

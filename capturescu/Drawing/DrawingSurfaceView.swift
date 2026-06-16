@@ -15,24 +15,27 @@ struct DrawingSurfaceView: View {
   @EnvironmentObject var toolsManager: ToolsManager
   @EnvironmentObject var markersManager: MarkersManager
   @EnvironmentObject var eventManager: EventManager
+  /// Owns the visible-region geometry. The canvas offset that decides which part
+  /// of the frozen full-screen image is shown — and panning/moving it — lives here.
+  @EnvironmentObject var editorModel: SnapshotEditorModel
 
   // Double-click detection state
   @State private var lastClickTime: Date = Date()
   @State private var lastClickLocation: CGPoint = .zero
   private let doubleClickTimeWindow: TimeInterval = 0.5 // 500ms
   private let doubleClickLocationTolerance: CGFloat = 10.0 // 10 pixels
-  
+
   // Infinite canvas state
-  @State private var canvasOffset: CGPoint = .zero
   @State private var isSpacePressed: Bool = false
-  @State private var panStartOffset: CGPoint = .zero
   @State private var keyMonitor: Any?
   @State private var scrollMonitor: Any?
-  
 
-  init(capturedImage: CapturedPasteboardImage?, initialCanvasOffset: CGPoint = .zero) {
+  /// The canvas is translated by this so the model's `visibleRect` shows in the
+  /// viewport. It's derived from the editor geometry, not local state.
+  private var canvasOffset: CGPoint { editorModel.canvasOffset }
+
+  init(capturedImage: CapturedPasteboardImage?) {
     self.capturedImage = capturedImage
-    _canvasOffset = State(initialValue: initialCanvasOffset)
   }
 
   /// Drag pans the image (instead of drawing) while the hand tool is selected
@@ -150,10 +153,7 @@ struct DrawingSurfaceView: View {
   /// independent of the selected tool.
   private func setupScrollMonitoring() {
     scrollMonitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { event in
-      canvasOffset = CGPoint(
-        x: canvasOffset.x + event.scrollingDeltaX,
-        y: canvasOffset.y + event.scrollingDeltaY
-      )
+      editorModel.moveByScroll(dx: event.scrollingDeltaX, dy: event.scrollingDeltaY)
       return event
     }
   }
@@ -198,18 +198,14 @@ struct DrawingSurfaceView: View {
     let location = value.location
     let translation = value.translation
 
-    // Hand tool or space bar → pan the canvas instead of drawing.
+    // Hand tool or space bar → move the whole editor across the frozen screen
+    // (revealing the pixels under its new position) instead of drawing.
     if isPanMode {
-      // On drag start, save the current offset
       if translation.width == 0 && translation.height == 0 {
-        panStartOffset = canvasOffset
+        editorModel.moveBegan()
         NSCursor.closedHand.set()
       } else {
-        // Infinite canvas: apply the translation with no bounds.
-        canvasOffset = CGPoint(
-          x: panStartOffset.x + translation.width,
-          y: panStartOffset.y + translation.height
-        )
+        editorModel.moveUpdated()
       }
       return
     }

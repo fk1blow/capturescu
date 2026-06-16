@@ -27,6 +27,8 @@ final class AnnotationWindowController {
     private let markersManager = MarkersManager()
     private var eventManager: EventManager!
     private var capturedImage: CapturedPasteboardImage!
+    /// Owns the visible-region geometry; the window + toolbar follow its changes.
+    private var editorModel: SnapshotEditorModel!
 
     /// The toolbar's real intrinsic size, measured per-present (fallback below).
     private var toolbarSize = CGSize(width: 280, height: 58)
@@ -41,10 +43,12 @@ final class AnnotationWindowController {
     private let edgeMargin: CGFloat = 12
 
     /// - Parameters:
-    ///   - imageSize: the snapshot's point size.
-    ///   - imageTopLeft: where the snapshot's top-left corner should sit, in
-    ///     global AppKit screen coordinates (y = the image's *top* edge).
-    func present(image: CGImage, scale: CGFloat, imageSize: CGSize, imageTopLeft: CGPoint, onClose: @escaping () -> Void) {
+    ///   - fullImage: the frozen WHOLE-screen capture (pixels). The editor shows
+    ///     a screen-pinned window onto it; resizing/moving reveals more of it.
+    ///   - screenFrame: the captured screen's frame, global AppKit coordinates.
+    ///   - selection: the user's selected region, in image-point space (top-left
+    ///     origin) — the initial visible region.
+    func present(fullImage: CGImage, scale: CGFloat, screenFrame: CGRect, selection: CGRect, onClose: @escaping () -> Void) {
         self.onClose = onClose
 
         // Wire up the managers exactly like capturescuApp does.
@@ -56,82 +60,56 @@ final class AnnotationWindowController {
         // must be wired first — the probe renders MiniToolbarView).
         toolbarSize = measureToolbarSize()
 
+        // The editor wraps the WHOLE frozen screen; the dashed border + viewport
+        // clip it down to the visible region.
         capturedImage = CapturedPasteboardImage(
-            image: image,
+            image: fullImage,
             position: .zero,
             scale: 1.0 / scale,
             hiDPIScale: 1.0 / scale,
             originalPNGData: nil
         )
 
-        // The dashed border frames *only* the image region — it is the capture
-        // rectangle, so nothing but the image lives inside it. The toolbar
-        // normally sits in its own band *below* the border. Only when the image +
-        // border + that band can't fit on screen does the image clamp to the
-        // monitor and the toolbar overlap its bottom (pan to see underneath). The
-        // window hugs the snapshot exactly; the centered toolbar simply overhangs
-        // the sides when the snapshot is narrower than it.
-        let toolbarBelow = toolbarTopGap + toolbarSize.height
+        // Working area to keep the editor on-screen. A nil screen means we can't
+        // determine one, so fall back to the captured screen frame (no clamping
+        // beyond the image itself).
+        let working = visibleFrame(containing: CGPoint(x: screenFrame.midX, y: screenFrame.midY)) ?? screenFrame
 
-        // Max area for the image region (border excluded). A nil screen means we
-        // can't determine a max, so don't clamp: show natural size and rely on
-        // pan, and never overlap.
-        let visible = visibleFrame(containing: imageTopLeft)
-        let maxContent: CGSize
-        if let visible {
-            maxContent = CGSize(
-                width: visible.width - 2 * edgeMargin - 2 * borderWidth,
-                height: visible.height - 2 * edgeMargin - 2 * borderWidth
-            )
-        } else {
-            maxContent = CGSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
-        }
-
-        let contentWidth = min(imageSize.width, maxContent.width)
-
-        // Room for the band below the border? Yes → toolbar sits below it.
-        // No → image fills the available height and the toolbar overlaps it.
-        let fits = imageSize.height + toolbarBelow <= maxContent.height
-        let imageAreaHeight: CGFloat
-        let toolbarOverlaps: Bool
-        if fits {
-            imageAreaHeight = min(imageSize.height, maxContent.height - toolbarBelow)
-            toolbarOverlaps = false
-        } else {
-            imageAreaHeight = min(imageSize.height, maxContent.height)
-            toolbarOverlaps = true
-        }
-
-        // The window content is just the image region; the dashed border wraps it.
-        let content = CGSize(width: contentWidth, height: imageAreaHeight)
-        let windowSize = CGSize(
-            width: content.width + 2 * borderWidth,
-            height: content.height + 2 * borderWidth
+        let model = SnapshotEditorModel(
+            fullImage: fullImage,
+            scale: scale,
+            screenFrame: screenFrame,
+            visibleFrame: working,
+            edgeMargin: edgeMargin,
+            border: borderWidth,
+            minSize: CGSize(width: 48, height: 48)
         )
+        model.setInitialVisibleRect(selection)
+        editorModel = model
 
-        // Center the image within the region. Baked into the canvas offset so
-        // markers and the clipboard export stay aligned.
-        let centerOffset = CGPoint(
-            x: max(0, (content.width - imageSize.width) / 2),
-            y: max(0, (content.height - imageSize.height) / 2)
-        )
-
-        // Place the window so the image's top-left lands on imageTopLeft, then
-        // clamp on-screen (when a screen is known), reserving the toolbar band
-        // below the window unless the toolbar overlaps the image.
-        var originX = imageTopLeft.x - borderWidth - centerOffset.x
-        var originY = (imageTopLeft.y + borderWidth + centerOffset.y) - windowSize.height
-        if let visible {
-            originX = min(max(originX, visible.minX + edgeMargin), visible.maxX - edgeMargin - windowSize.width)
-            let reserveBelow = toolbarOverlaps ? edgeMargin : edgeMargin + toolbarBelow
-            originY = min(max(originY, visible.minY + reserveBelow), visible.maxY - edgeMargin - windowSize.height)
-        }
-        let windowFrame = CGRect(origin: CGPoint(x: originX, y: originY), size: windowSize)
-
-        presentAnnotationWindow(viewportSize: content, initialCanvasOffset: centerOffset, at: windowFrame)
-        presentToolbar(for: windowFrame, overlaps: toolbarOverlaps)
+        presentAnnotationWindow(at: model.windowFrame)
+        presentToolbar(for: model.windowFrame, overlaps: toolbarOverlaps())
         installKeyMonitor()
         installClickOutsideMonitor()
+
+        // From now on, any resize/move reflows the window + toolbar.
+        model.onGeometryChange = { [weak self] in self?.applyGeometry() }
+    }
+
+    /// Reposition both windows after the visible region changed (resize / move).
+    private func applyGeometry() {
+        guard let window = annotationWindow else { return }
+        let frame = editorModel.windowFrame
+        window.setFrame(frame, display: true)
+        toolbarPanel?.setFrame(toolbarFrame(for: frame, overlaps: toolbarOverlaps()), display: true)
+    }
+
+    /// The toolbar sits below the editor unless that band would fall outside the
+    /// working area (editor near the screen bottom), in which case it overlaps the
+    /// editor's bottom edge instead.
+    private func toolbarOverlaps() -> Bool {
+        let belowOriginY = editorModel.windowFrame.minY - toolbarTopGap - toolbarSize.height
+        return belowOriginY < editorModel.workingArea.minY
     }
 
     /// The visible frame (excludes menu bar / Dock) of the screen containing the
@@ -214,15 +192,12 @@ final class AnnotationWindowController {
 
     // MARK: - Windows
 
-    private func presentAnnotationWindow(viewportSize: CGSize, initialCanvasOffset: CGPoint, at frame: CGRect) {
-        let view = CaptureAnnotationView(
-            capturedImage: capturedImage,
-            viewportSize: viewportSize,
-            initialCanvasOffset: initialCanvasOffset
-        )
+    private func presentAnnotationWindow(at frame: CGRect) {
+        let view = CaptureAnnotationView(capturedImage: capturedImage)
             .environmentObject(toolsManager)
             .environmentObject(markersManager)
             .environmentObject(eventManager)
+            .environmentObject(editorModel)
 
         let window = KeyableBorderlessWindow(
             contentRect: frame,
@@ -308,12 +283,22 @@ final class AnnotationWindowController {
     // MARK: - Actions
 
     private func copyToClipboard() {
+        // Export only the currently visible region of the frozen full screen.
+        // Markers live in full-image-point space, so shift them (and the image)
+        // by -visibleRect.origin to land the visible window at the output origin.
+        let visible = editorModel.visibleRect
+        let transformedMarkers = markersManager.markers.map { marker -> Marker in
+            var shifted = marker
+            shifted.offsetMarkerBy(dx: -visible.minX, dy: -visible.minY)
+            return shifted
+        }
+
         let pngData = CGContextRenderer.renderWithMarkers(
             image: capturedImage.image,
-            markers: markersManager.markers,
-            bounds: CGRect(origin: .zero, size: capturedImage.naturalSize),
-            imagePosition: .zero,
-            imageSize: capturedImage.naturalSize,
+            markers: transformedMarkers,
+            bounds: CGRect(origin: .zero, size: visible.size),
+            imagePosition: CGPoint(x: -visible.minX, y: -visible.minY),
+            imageSize: capturedImage.displaySize,
             hiDPIScale: capturedImage.hiDPIScale
         )
         if let pngData {
