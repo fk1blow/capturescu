@@ -43,6 +43,10 @@ final class SnapshotEditorModel: ObservableObject {
     /// Captured screen frame, global AppKit coordinates (bottom-left origin).
     let screenFrame: CGRect
     let border: CGFloat
+    /// Transparent ring around the visible snapshot. The window is grown by this
+    /// on every side so the resize handles can live *outside* the dashed border —
+    /// you grab from beyond the snapshot instead of hugging its edge.
+    let grabMargin: CGFloat
     let minSize: CGSize
     /// Full image's point size (== `screenFrame.size`).
     let imagePointSize: CGSize
@@ -71,11 +75,13 @@ final class SnapshotEditorModel: ObservableObject {
          visibleFrame: CGRect,
          edgeMargin: CGFloat,
          border: CGFloat,
+         grabMargin: CGFloat,
          minSize: CGSize) {
         self.fullImage = fullImage
         self.scale = scale
         self.screenFrame = screenFrame
         self.border = border
+        self.grabMargin = grabMargin
         self.minSize = minSize
         self.imagePointSize = CGSize(width: CGFloat(fullImage.width) / scale,
                                      height: CGFloat(fullImage.height) / scale)
@@ -85,8 +91,9 @@ final class SnapshotEditorModel: ObservableObject {
 
         // The content (inside the border) must stay inside the working area; map
         // that allowance from global AppKit into image-point space, then clip to
-        // the image itself (can't reveal beyond the captured screen).
-        let contentGlobal = working.insetBy(dx: border, dy: border)
+        // the image itself (can't reveal beyond the captured screen). The window
+        // also carries the transparent grab ring, so reserve border + grabMargin.
+        let contentGlobal = working.insetBy(dx: border + grabMargin, dy: border + grabMargin)
         let allowedFromScreen = CGRect(
             x: contentGlobal.minX - screenFrame.minX,
             y: screenFrame.maxY - contentGlobal.maxY,
@@ -104,17 +111,26 @@ final class SnapshotEditorModel: ObservableObject {
 
     var viewportSize: CGSize { visibleRect.size }
 
-    /// The borderless window's frame in global AppKit coords (content + border).
+    /// Total inset from the window edge to the viewport: the dashed border plus
+    /// the transparent grab ring outside it.
+    private var outerInset: CGFloat { border + grabMargin }
+
+    /// The borderless window's frame in global AppKit coords (viewport + border +
+    /// transparent grab ring on every side).
     var windowFrame: CGRect {
         let contentX = screenFrame.minX + visibleRect.minX
         let contentY = screenFrame.maxY - visibleRect.maxY // AppKit minY = bottom edge
         return CGRect(
-            x: contentX - border,
-            y: contentY - border,
-            width: visibleRect.width + 2 * border,
-            height: visibleRect.height + 2 * border
+            x: contentX - outerInset,
+            y: contentY - outerInset,
+            width: visibleRect.width + 2 * outerInset,
+            height: visibleRect.height + 2 * outerInset
         )
     }
+
+    /// The visible snapshot's frame (viewport + dashed border), i.e. the window
+    /// minus the transparent grab ring. Used to anchor the toolbar.
+    var snapshotFrame: CGRect { windowFrame.insetBy(dx: grabMargin, dy: grabMargin) }
 
     // MARK: - Initial placement
 

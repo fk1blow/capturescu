@@ -37,6 +37,9 @@ final class AnnotationWindowController {
     /// Gap between the image's bottom edge and the toolbar's top edge.
     private let toolbarTopGap: CGFloat = 24
     private let borderWidth: CGFloat = 2
+    /// Transparent ring around the visible snapshot where the resize handles live,
+    /// so you grab from *outside* the dashed border. The window is grown by this.
+    private let grabMargin: CGFloat = 14
     /// Keep the window this far from the screen edges, so the dashed border is
     /// always visible and there's breathing room. Captures larger than the
     /// resulting area are shown 1:1 and panned via the hand tool.
@@ -82,13 +85,14 @@ final class AnnotationWindowController {
             visibleFrame: working,
             edgeMargin: edgeMargin,
             border: borderWidth,
+            grabMargin: grabMargin,
             minSize: CGSize(width: 48, height: 48)
         )
         model.setInitialVisibleRect(selection)
         editorModel = model
 
         presentAnnotationWindow(at: model.windowFrame)
-        presentToolbar(for: model.windowFrame, overlaps: toolbarOverlaps())
+        presentToolbar(for: model.snapshotFrame, overlaps: toolbarOverlaps())
         installKeyMonitor()
         installClickOutsideMonitor()
 
@@ -99,16 +103,16 @@ final class AnnotationWindowController {
     /// Reposition both windows after the visible region changed (resize / move).
     private func applyGeometry() {
         guard let window = annotationWindow else { return }
-        let frame = editorModel.windowFrame
-        window.setFrame(frame, display: true)
-        toolbarPanel?.setFrame(toolbarFrame(for: frame, overlaps: toolbarOverlaps()), display: true)
+        window.setFrame(editorModel.windowFrame, display: true)
+        // Anchor the toolbar to the visible snapshot, not the larger grab window.
+        toolbarPanel?.setFrame(toolbarFrame(for: editorModel.snapshotFrame, overlaps: toolbarOverlaps()), display: true)
     }
 
     /// The toolbar sits below the editor unless that band would fall outside the
     /// working area (editor near the screen bottom), in which case it overlaps the
     /// editor's bottom edge instead.
     private func toolbarOverlaps() -> Bool {
-        let belowOriginY = editorModel.windowFrame.minY - toolbarTopGap - toolbarSize.height
+        let belowOriginY = editorModel.snapshotFrame.minY - toolbarTopGap - toolbarSize.height
         return belowOriginY < editorModel.workingArea.minY
     }
 

@@ -26,9 +26,11 @@ struct CaptureAnnotationView: View {
     @State private var isResizing = false
 
     private let borderWidth: CGFloat = 2
-    /// Thickness of the edge grab strips and size of the corner grab squares.
-    private let edgeGrab: CGFloat = 8
-    private let cornerGrab: CGFloat = 16
+    /// How far the grab strips reach inward from the window edge: across the
+    /// transparent ring (+ border) plus a few px so the snapshot edge itself is
+    /// grabbable. Most of the zone sits in the ring, outside the snapshot.
+    private var edgeGrab: CGFloat { editorModel.grabMargin + borderWidth + 2 }
+    private var cornerGrab: CGFloat { editorModel.grabMargin + borderWidth + 10 }
 
     var body: some View {
         DrawingSurfaceView(capturedImage: capturedImage)
@@ -41,7 +43,27 @@ struct CaptureAnnotationView: View {
                     style: StrokeStyle(lineWidth: borderWidth, dash: [6, 4])
                 )
             )
+            .overlay(cornerBrackets)
+            // Transparent grab ring around the snapshot: the resize handles live
+            // out here, so you grab from *outside* the dashed border.
+            .padding(editorModel.grabMargin)
             .overlay(resizeHandles)
+    }
+
+    // MARK: - Corner emphasis
+
+    /// Heavy L-shaped marks on all four corners — a persistent "this is resizable"
+    /// affordance, always shown regardless of where the mouse is. Purely cosmetic:
+    /// it must never intercept the corner grab handles underneath it.
+    private var cornerBrackets: some View {
+        // Arm length stays put; only the stroke gets heavier. Inset by half the
+        // line width so the thicker stroke sits flush to the corner rather than
+        // spilling outside the frame.
+        let lineWidth: CGFloat = 6
+        return CornerBrackets(arm: 24, inset: lineWidth / 2)
+            .stroke(Color.white, style: StrokeStyle(lineWidth: lineWidth, lineCap: .butt, lineJoin: .miter))
+            .shadow(color: Color.black.opacity(0.45), radius: 1)
+            .allowsHitTesting(false)
     }
 
     // MARK: - Resize handles
@@ -117,6 +139,39 @@ struct CaptureAnnotationView: View {
                     }
                     .onEnded { _ in isResizing = false }
             )
+    }
+}
+
+/// L-shaped brackets at all four corners of a rect: for each corner, draw one arm
+/// along each edge meeting at the corner.
+private struct CornerBrackets: Shape {
+    var arm: CGFloat
+    var inset: CGFloat
+
+    func path(in rect: CGRect) -> Path {
+        var p = Path()
+        let r = rect.insetBy(dx: inset, dy: inset)
+        // Don't let opposite arms meet on a tiny editor — cap at ~40% of the
+        // shorter side so the brackets stay distinct corner marks.
+        let arm = min(self.arm, min(r.width, r.height) * 0.4)
+        // Each corner: end of vertical arm → corner → end of horizontal arm.
+        // top-left
+        p.move(to: CGPoint(x: r.minX, y: r.minY + arm))
+        p.addLine(to: CGPoint(x: r.minX, y: r.minY))
+        p.addLine(to: CGPoint(x: r.minX + arm, y: r.minY))
+        // top-right
+        p.move(to: CGPoint(x: r.maxX - arm, y: r.minY))
+        p.addLine(to: CGPoint(x: r.maxX, y: r.minY))
+        p.addLine(to: CGPoint(x: r.maxX, y: r.minY + arm))
+        // bottom-right
+        p.move(to: CGPoint(x: r.maxX, y: r.maxY - arm))
+        p.addLine(to: CGPoint(x: r.maxX, y: r.maxY))
+        p.addLine(to: CGPoint(x: r.maxX - arm, y: r.maxY))
+        // bottom-left
+        p.move(to: CGPoint(x: r.minX + arm, y: r.maxY))
+        p.addLine(to: CGPoint(x: r.minX, y: r.maxY))
+        p.addLine(to: CGPoint(x: r.minX, y: r.maxY - arm))
+        return p
     }
 }
 
