@@ -31,6 +31,20 @@ struct MiniToolbarView: View {
             }
 
             ToolbarButton(
+                iconName: "pencil.line",
+                active: toolsManager.currentTool == .LinePointer
+            ) {
+                toolsManager.selectTool(named: .LinePointer)
+            }
+
+            ToolbarButton(
+                iconName: "arrow.down.left",
+                active: toolsManager.currentTool == .ArrowPointer
+            ) {
+                toolsManager.selectTool(named: .ArrowPointer)
+            }
+
+            ToolbarButton(
                 iconName: "character",
                 active: toolsManager.currentTool == .TextPointer
             ) {

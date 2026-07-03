@@ -91,3 +91,18 @@ extension CGRect {
         return CGPoint(x: midX, y: midY)
     }
 }
+
+/// Snap `end` so the vector from `start` points along the nearest multiple of `increment`,
+/// preserving the distance from `start`. Used for Shift-to-snap straight lines/arrows.
+/// Default increment is 15° (0/15/30/45/60/75/90…), which includes the 45° compass
+/// directions as a subset.
+func snapPointToAngle(from start: CGPoint, to end: CGPoint,
+                      increment: CGFloat = .pi / 12) -> CGPoint {
+    let dx = end.x - start.x
+    let dy = end.y - start.y
+    let length = hypot(dx, dy)
+    guard length > 0 else { return end }
+    let snappedAngle = (atan2(dy, dx) / increment).rounded() * increment
+    return CGPoint(x: start.x + length * cos(snappedAngle),
+                   y: start.y + length * sin(snappedAngle))
+}

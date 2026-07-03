@@ -5,6 +5,7 @@
 //  Created by Dragos Tudorache
 //
 
+import AppKit
 import Foundation
 import SwiftUI
 
@@ -81,17 +82,21 @@ import SwiftUI
     }
     
     private func updateDrawing(at point: CGPoint) {
-        guard isDrawing else { return }
-        currentEndPoint = point
+        guard isDrawing, let start = startPoint else { return }
+        currentEndPoint = NSEvent.modifierFlags.contains(.shift)
+            ? snapPointToAngle(from: start, to: point) : point
     }
-    
+
     private func endDrawing(at point: CGPoint) -> ToolResponse {
         guard isDrawing, let start = startPoint, let markersManager = markersManager else { return .empty }
-        
+
+        let endPoint = NSEvent.modifierFlags.contains(.shift)
+            ? snapPointToAngle(from: start, to: point) : point
+
         // Create line marker using DrawingMarker
         var marker = DrawingMarker(markerColor: markerColor)
         marker.path.move(to: start)
-        marker.path.addLine(to: point)
+        marker.path.addLine(to: endPoint)
         
         // Create command to add marker
         let command = AddMarkerCommand(
