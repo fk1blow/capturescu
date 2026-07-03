@@ -22,6 +22,7 @@ final class AnnotationWindowController {
     private var keyMonitor: Any?
     private var flagsMonitor: Any?
     private var clickOutsideMonitor: Any?
+    private var resignActiveObserver: Any?
 
     // Fresh state, independent of the main window.
     private let toolsManager = ToolsManager()
@@ -100,6 +101,7 @@ final class AnnotationWindowController {
         installKeyMonitor()
         installFlagsMonitor()
         installClickOutsideMonitor()
+        installResignActiveObserver()
 
         // From now on, any resize/move reflows the window + toolbar.
         model.onGeometryChange = { [weak self] in self?.applyGeometry() }
@@ -161,6 +163,32 @@ final class AnnotationWindowController {
             NSEvent.removeMonitor(clickOutsideMonitor)
         }
         clickOutsideMonitor = nil
+    }
+
+    // MARK: - Dismiss on focus loss
+
+    /// The click-outside monitor only fires on a mouse-DOWN in another app, so
+    /// switching away with the keyboard (⌘-Tab, Mission Control, Spotlight)
+    /// leaves the editor floating. Whenever the whole app resigns active we
+    /// dismiss it too — exactly as if Esc had been pressed. Clicking our own
+    /// toolbar (a non-activating panel) or annotation window keeps the app
+    /// active, so those don't trip it.
+    private func installResignActiveObserver() {
+        guard resignActiveObserver == nil else { return }
+        resignActiveObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.didResignActiveNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in self?.close() }
+        }
+    }
+
+    private func removeResignActiveObserver() {
+        if let resignActiveObserver {
+            NotificationCenter.default.removeObserver(resignActiveObserver)
+        }
+        resignActiveObserver = nil
     }
 
     // MARK: - Key shortcuts (⌘C, Esc)
@@ -374,6 +402,7 @@ final class AnnotationWindowController {
         removeKeyMonitor()
         removeFlagsMonitor()
         removeClickOutsideMonitor()
+        removeResignActiveObserver()
         toolbarPanel?.orderOut(nil)
         toolbarPanel = nil
         annotationWindow?.orderOut(nil)

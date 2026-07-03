@@ -35,8 +35,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func setupStatusItem() {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        item.button?.image = NSImage(systemSymbolName: "scissors",
-                                     accessibilityDescription: "Capturescu")
+        // Template image: monochrome, so macOS tints it to match the menu bar
+        // (dark glyph on light bars, light glyph on dark bars) automatically.
+        let icon = NSImage(named: "MenuBarIcon")
+        icon?.isTemplate = true
+        icon?.accessibilityDescription = "Capturescu"
+        item.button?.image = icon
         item.button?.target = self
         item.button?.action = #selector(statusItemClicked)
         // Deliver both click types so we can branch on left vs right.
