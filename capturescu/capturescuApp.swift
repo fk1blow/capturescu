@@ -14,19 +14,9 @@ struct capturescuApp: App {
 
     var body: some Scene {
         // Menu-bar-only app: no main window, no Dock icon (LSUIElement). The
-        // capture flow runs entirely from the global hotkey (Meh+G) and these
-        // menu items.
-        MenuBarExtra("Capturescu", systemImage: "scissors") {
-            Button("Capture Region") {
-                appDelegate.flowController.beginCapture()
-            }
-
-            Divider()
-
-            Button("Quit Capturescu") {
-                NSApplication.shared.terminate(nil)
-            }
-            .keyboardShortcut("q")
-        }
+        // menu-bar item is an AppKit NSStatusItem owned by AppDelegate so it can
+        // distinguish left-click (capture immediately) from right-click (menu).
+        // This empty Settings scene just satisfies the Scene builder.
+        Settings { EmptyView() }
     }
 }
