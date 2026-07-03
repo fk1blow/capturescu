@@ -47,14 +47,20 @@ struct RegionSelectionView: View {
 
             // Selection border + size readout.
             if hasSelection {
-                Rectangle()
-                    // Same dashed border as the snapshot editor (see
-                    // CaptureAnnotationView), drawn just *outside* the selection
-                    // rect — the snapshot frames the image from outside too, so
-                    // the border doesn't shift by ~2px when the editor appears.
-                    .strokeBorder(Color.white, style: StrokeStyle(lineWidth: borderWidth, dash: [6, 4]))
-                    .frame(width: selection.width + 2 * borderWidth, height: selection.height + 2 * borderWidth)
-                    .position(x: selection.midX, y: selection.midY)
+                // Same two-tone dashed border as the snapshot editor (see
+                // CaptureAnnotationView), drawn just *outside* the selection
+                // rect — the snapshot frames the image from outside too, so
+                // the border doesn't shift by ~2px when the editor appears.
+                // Dark underlay + white dashes offset into the gaps keeps it
+                // visible on any surface.
+                ZStack {
+                    Rectangle()
+                        .strokeBorder(Color.black.opacity(0.55), style: StrokeStyle(lineWidth: borderWidth, dash: [6, 4]))
+                    Rectangle()
+                        .strokeBorder(Color.white, style: StrokeStyle(lineWidth: borderWidth, dash: [6, 4], dashPhase: 6))
+                }
+                .frame(width: selection.width + 2 * borderWidth, height: selection.height + 2 * borderWidth)
+                .position(x: selection.midX, y: selection.midY)
 
                 Text("\(Int(selection.width)) × \(Int(selection.height))")
                     .font(.system(size: 11, weight: .medium, design: .monospaced))

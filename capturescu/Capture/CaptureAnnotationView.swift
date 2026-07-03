@@ -37,10 +37,19 @@ struct CaptureAnnotationView: View {
             .frame(width: editorModel.viewportSize.width, height: editorModel.viewportSize.height)
             .clipped()
             .padding(borderWidth)
+            // Two-tone "marching ants": a dark underlay stroke with the white
+            // dashes offset into its gaps, so the border stays visible on any
+            // surface — white, black, or colored — not just dark ones.
+            .overlay(
+                Rectangle().strokeBorder(
+                    Color.black.opacity(0.55),
+                    style: StrokeStyle(lineWidth: borderWidth, dash: [6, 4])
+                )
+            )
             .overlay(
                 Rectangle().strokeBorder(
                     Color.white,
-                    style: StrokeStyle(lineWidth: borderWidth, dash: [6, 4])
+                    style: StrokeStyle(lineWidth: borderWidth, dash: [6, 4], dashPhase: 6)
                 )
             )
             .overlay(cornerBrackets)
