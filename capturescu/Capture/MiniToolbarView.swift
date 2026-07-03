@@ -20,11 +20,13 @@ struct MiniToolbarView: View {
     var body: some View {
         HStack(spacing: 10) {
             ColorPickerButton()
+                .help("Color")
 
             Divider().frame(height: 28)
 
             ToolbarButton(
                 iconName: "pencil",
+                help: "Freehand",
                 active: toolsManager.currentTool == .FreehandPointer
             ) {
                 toolsManager.selectTool(named: .FreehandPointer)
@@ -32,6 +34,7 @@ struct MiniToolbarView: View {
 
             ToolbarButton(
                 iconName: "pencil.line",
+                help: "Line",
                 active: toolsManager.currentTool == .LinePointer
             ) {
                 toolsManager.selectTool(named: .LinePointer)
@@ -39,6 +42,7 @@ struct MiniToolbarView: View {
 
             ToolbarButton(
                 iconName: "arrow.down.left",
+                help: "Arrow",
                 active: toolsManager.currentTool == .ArrowPointer
             ) {
                 toolsManager.selectTool(named: .ArrowPointer)
@@ -46,6 +50,7 @@ struct MiniToolbarView: View {
 
             ToolbarButton(
                 iconName: "character",
+                help: "Text",
                 active: toolsManager.currentTool == .TextPointer
             ) {
                 toolsManager.selectTool(named: .TextPointer)
@@ -53,6 +58,7 @@ struct MiniToolbarView: View {
 
             ToolbarButton(
                 iconName: "hand.draw",
+                help: "Move (hold ⌘)",
                 active: toolsManager.currentTool == .HandPointer
             ) {
                 toolsManager.selectTool(named: .HandPointer)
@@ -60,11 +66,11 @@ struct MiniToolbarView: View {
 
             Divider().frame(height: 28)
 
-            ToolbarButton(iconName: "doc.on.clipboard", active: false) {
+            ToolbarButton(iconName: "doc.on.clipboard", help: "Copy", active: false) {
                 copyAction()
             }
 
-            ToolbarButton(iconName: "xmark", active: false) {
+            ToolbarButton(iconName: "xmark", help: "Close", active: false) {
                 closeAction()
             }
         }

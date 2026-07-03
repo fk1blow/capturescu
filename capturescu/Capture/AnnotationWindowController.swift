@@ -20,6 +20,7 @@ final class AnnotationWindowController {
     private var toolbarPanel: NSPanel?
     private var onClose: (() -> Void)?
     private var keyMonitor: Any?
+    private var flagsMonitor: Any?
     private var clickOutsideMonitor: Any?
 
     // Fresh state, independent of the main window.
@@ -97,6 +98,7 @@ final class AnnotationWindowController {
         presentAnnotationWindow(at: model.windowFrame)
         presentToolbar(for: model.snapshotFrame, overlaps: toolbarOverlaps())
         installKeyMonitor()
+        installFlagsMonitor()
         installClickOutsideMonitor()
 
         // From now on, any resize/move reflows the window + toolbar.
@@ -208,6 +210,41 @@ final class AnnotationWindowController {
             NSEvent.removeMonitor(keyMonitor)
         }
         keyMonitor = nil
+    }
+
+    // MARK: - Hold ⌘ to pan
+
+    /// Holding Command spring-loads the Hand (pan) tool — same as clicking the
+    /// Hand button — and releasing it restores the previous tool. Flipping
+    /// `toolsManager.currentTool` is all that's needed: DrawingSurfaceView's
+    /// pan mode and cursor already react to it. We don't swallow the event, so
+    /// ⌘C / ⌘Z combos keep working.
+    private func installFlagsMonitor() {
+        guard flagsMonitor == nil else { return }
+        flagsMonitor = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
+            guard let self else { return event }
+
+            let cmdDown = event.modifierFlags
+                .intersection(.deviceIndependentFlagsMask)
+                .contains(.command)
+
+            if cmdDown {
+                // Don't hijack ⌘ while typing in the text tool.
+                if NSApp.keyWindow?.firstResponder is NSText { return event }
+                self.toolsManager.beginTemporaryTool(.HandPointer)
+            } else {
+                self.toolsManager.endTemporaryTool()
+            }
+
+            return event
+        }
+    }
+
+    private func removeFlagsMonitor() {
+        if let flagsMonitor {
+            NSEvent.removeMonitor(flagsMonitor)
+        }
+        flagsMonitor = nil
     }
 
     // MARK: - Windows
@@ -332,7 +369,10 @@ final class AnnotationWindowController {
     }
 
     func close() {
+        // Never leave a spring-loaded hold engaged past teardown.
+        toolsManager.endTemporaryTool()
         removeKeyMonitor()
+        removeFlagsMonitor()
         removeClickOutsideMonitor()
         toolbarPanel?.orderOut(nil)
         toolbarPanel = nil
