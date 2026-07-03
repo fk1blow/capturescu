@@ -56,6 +56,9 @@ final class AnnotationWindowController {
 
         // Wire up the managers exactly like capturescuApp does.
         markersManager.setupUndoRedoNotification(toolsManager: toolsManager)
+        // HistoryManager is a shared singleton; start each annotation session with
+        // empty undo/redo stacks so a fresh capture can't undo into a prior session.
+        HistoryManager.shared.clear()
         eventManager = EventManager(markersManager: markersManager, toolsManager: toolsManager)
         toolsManager.selectTool(named: .FreehandPointer) // default to draw mode
 
@@ -175,11 +178,24 @@ final class AnnotationWindowController {
                 return nil
             }
 
-            // ⌘C copies + closes — unless a text editor handles its own copy.
             let mods = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+
+            // ⌘C copies + closes — unless a text editor handles its own copy.
             if mods == .command, event.charactersIgnoringModifiers?.lowercased() == "c" {
                 if NSApp.keyWindow?.firstResponder is NSText { return event }
                 self.copyAndClose()
+                return nil
+            }
+
+            // ⌘Z undo / ⇧⌘Z redo — unless a text editor is capturing keys.
+            if event.charactersIgnoringModifiers?.lowercased() == "z",
+               mods == .command || mods == [.command, .shift] {
+                if NSApp.keyWindow?.firstResponder is NSText { return event }
+                if mods.contains(.shift) {
+                    HistoryManager.shared.redo()
+                } else {
+                    HistoryManager.shared.undo()
+                }
                 return nil
             }
 
