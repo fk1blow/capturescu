@@ -7,331 +7,318 @@
 
 import Foundation
 import SwiftUI
+import AppKit
 
 @Observable class TextPointerTool: PointerTool {
     let toolName = PointerToolName.TextPointer
     let needsAccessoryView = true
-    
+
     private var markerColor: MarkerColor
-    var editingContext: EditingContext?
     private weak var markersManager: MarkersManager?
     private var eventHandler: ((PointerEvent) -> Void)?
-    
-    struct EditingContext {
-        let originalMarker: Marker
+
+    /// An existing text marker being edited. Captured immutably per session so a
+    /// commit is unaffected by any later change to the tool's state.
+    private struct TextEditTarget {
         let index: Int
-        let startPosition: CGPoint
+        let id: UUID
     }
-    
-    // Store the original click position for new markers
-    private var currentClickPosition: CGPoint?
-    
+
+    /// The in-progress edit. The tool owns the live `editingText` (bound to the
+    /// field) so it can commit the typed text atomically on any transition —
+    /// Return, Escape, clicking away, or switching tools — without racing the
+    /// field's own lifecycle.
+    private struct EditSession {
+        let id: UUID
+        let origin: CGPoint          // canvas-space top-left of the text
+        let target: TextEditTarget?  // nil = creating a new marker
+        let color: MarkerColor
+    }
+
+    private var session: EditSession?
+    /// Live text of the active field. `@Observable`, bound into the editor view.
+    var editingText: String = ""
+
     init(color: MarkerColor, markersManager: MarkersManager) {
         self.markerColor = color
         self.markersManager = markersManager
     }
-    
+
     func setEventHandler(_ handler: @escaping (PointerEvent) -> Void) {
         eventHandler = handler
     }
-    
+
     func handleEvent(_ event: PointerEvent) -> ToolResponse {
         switch event {
         case .click(let point):
             return handleClick(at: point)
-            
-        case .editMarker(let marker, let point, let index):
-            return handleEditMarker(marker, at: point, index: index)
-            
+
+        case .dragStart:
+            // A drag on the canvas ends the current edit, committing typed text.
+            return endSessionResponse()
+
+        case .editMarker(let marker, _, let index):
+            return handleEditMarker(marker, index: index)
+
         case .accessoryAction(let action):
             return handleAccessoryAction(action)
-            
-        case .cancelEdit:
-            return handleCancelEdit()
-            
+
+        case .cancelEdit, .keyPressed(.escape):
+            // Escape discards the edit entirely: no commit, and the original
+            // marker reappears (it was only hidden, never changed).
+            clearSession()
+            return ToolResponse(shouldContinue: false, clearSelection: true)
+
         default:
             return .empty
         }
     }
-    
+
+    /// Called on tool switch. Commit any in-progress text so switching tools
+    /// doesn't silently discard what the user typed.
     func reset() {
-        editingContext = nil
+        if let command = commitCurrentSession() {
+            HistoryManager.shared.execute(command)
+        }
     }
-    
+
     func updateColor(_ color: MarkerColor) {
         markerColor = color
     }
-    
+
     func updateMarkersManager(_ markersManager: MarkersManager) {
         self.markersManager = markersManager
     }
-    
+
     // MARK: - Event Handlers
-    
+
     private func handleClick(at point: CGPoint) -> ToolResponse {
-        // Check if clicking on an existing marker
+        // A click first commits any field that's currently open (click-away),
+        // then decides what this click does.
+        var commands: [MarkerCommand] = []
+        if let command = commitCurrentSession() { commands.append(command) }
+
         if let markersManager = markersManager {
             let markerFinder = MarkerFinder(markersManager: markersManager)
-            
-            if let editableMarker = markerFinder.findEditableMarkerAt(point) {
-                if editableMarker.canEdit {
-                    // Edit existing text marker
-                    return handleEditMarker(editableMarker.marker, at: point, index: editableMarker.index)
-                } else {
-                    // Non-text marker - switch to selection tool
+            if let editable = markerFinder.findEditableMarkerAt(point) {
+                if editable.canEdit, let textMarker = editable.marker as? TextMarker {
+                    // Edit an existing text marker in place.
+                    startSession(
+                        origin: textMarker.frameRepresentation.origin,
+                        target: TextEditTarget(index: editable.index, id: textMarker.id),
+                        color: textMarker.style.strokeColor,
+                        initialText: textMarker.textValueRepresentation
+                    )
                     return ToolResponse(
                         shouldContinue: true,
+                        commands: commands,
+                        accessoryView: makeField()
+                    )
+                } else {
+                    // Non-text marker — hand off to the selection tool.
+                    return ToolResponse(
+                        shouldContinue: true,
+                        commands: commands,
                         toolSwitch: .selectionTool,
-                        editMarker: (editableMarker.marker, editableMarker.index)
+                        editMarker: (editable.marker, editable.index)
                     )
                 }
             }
         }
-        
-        // Create new text marker - store the click position and use geometry
-        currentClickPosition = point
-        let textGeometry = TextMarkerGeometry(renderBounds: CGRect(origin: point, size: CGSize(width: 120, height: 30)))
-        let editingPosition = textGeometry.getEditingPosition(for: point)
-        let accessoryView = createTextEditor(at: editingPosition)
+
+        // Empty space — start a new text marker at the click point.
+        startSession(origin: point, target: nil, color: markerColor, initialText: "")
         return ToolResponse(
             shouldContinue: true,
-            accessoryView: accessoryView
+            commands: commands,
+            accessoryView: makeField()
         )
     }
-    
-    private func handleEditMarker(_ marker: Marker, at point: CGPoint, index: Int) -> ToolResponse {
-        // Edit existing text marker
-        editingContext = EditingContext(
-            originalMarker: marker,
-            index: index,
-            startPosition: point
-        )
-        
+
+    private func handleEditMarker(_ marker: Marker, index: Int) -> ToolResponse {
+        var commands: [MarkerCommand] = []
+        if let command = commitCurrentSession() { commands.append(command) }
+
         guard let textMarker = marker as? TextMarker else {
-            // This should never happen - only text markers should be sent for editing
-            return .empty
+            // Only text markers are editable here.
+            return ToolResponse(shouldContinue: false, commands: commands, clearSelection: true)
         }
-        
-        let initialText = textMarker.textValueRepresentation
-        let editingPosition = textMarker.getEditingPosition()
-        
-        let accessoryView = createTextEditor(at: editingPosition, initialText: initialText)
-        
+
+        startSession(
+            origin: textMarker.frameRepresentation.origin,
+            target: TextEditTarget(index: index, id: textMarker.id),
+            color: textMarker.style.strokeColor,
+            initialText: textMarker.textValueRepresentation
+        )
         return ToolResponse(
             shouldContinue: true,
-            accessoryView: accessoryView
+            commands: commands,
+            accessoryView: makeField()
         )
     }
-    
+
     private func handleAccessoryAction(_ action: AccessoryAction) -> ToolResponse {
         switch action {
-        case .textSubmitted(let text, let frame):
-            return handleTextSubmitted(text: text, frame: frame)
-            
+        case .textSubmitted:
+            return endSessionResponse()
+
         case .textCancelled:
-            return handleTextCancelled()
-            
+            clearSession()
+            return ToolResponse(shouldContinue: false, clearSelection: true)
+
         case .hide:
-            return ToolResponse(
-                shouldContinue: false,
-                clearSelection: true
-            )
-            
+            return ToolResponse(shouldContinue: false, clearSelection: true)
+
         default:
             return .empty
         }
     }
-    
-    private func handleCancelEdit() -> ToolResponse {
-        editingContext = nil
-        return ToolResponse(
-            shouldContinue: false,
-            clearSelection: true
-        )
+
+    // MARK: - Session management
+
+    private func startSession(origin: CGPoint, target: TextEditTarget?, color: MarkerColor, initialText: String) {
+        session = EditSession(id: UUID(), origin: origin, target: target, color: color)
+        editingText = initialText
+        // Hide the marker being edited so only the editor field shows.
+        markersManager?.editingMarkerID = target?.id
     }
-    
-    private func handleTextSubmitted(text: String, frame: CGRect) -> ToolResponse {
-        guard let markersManager = markersManager else { return .empty }
-        
-        if let editing = editingContext {
-            // Update existing marker - use the original position
-            let originalTextMarker = editing.originalMarker as! TextMarker
-            let originalPosition = originalTextMarker.frameRepresentation.origin
-            
-            // Calculate actual text size for updated marker
-            let font = NSFont.systemFont(ofSize: 14)
-            let attributes = [NSAttributedString.Key.font: font]
-            let attributedString = NSAttributedString(string: text, attributes: attributes)
-            let textBounds = attributedString.boundingRect(with: CGSize(width: 280, height: 280), options: [.usesLineFragmentOrigin, .usesFontLeading])
-            
-            let textGeometry = TextMarkerGeometry(renderBounds: CGRect(
-                origin: originalPosition,
-                size: CGSize(width: max(textBounds.width + 4, 20), height: max(textBounds.height + 4, 16))
-            ))
-            
-            var updatedMarker = TextMarker(
-                markerColor: markerColor,
-                textValue: text,
-                frame: textGeometry.renderBounds
-            )
-            updatedMarker.id = editing.originalMarker.id
-            
-            let command = UpdateMarkerCommand(
+
+    /// Clear the active session and stop hiding the edited marker.
+    private func clearSession() {
+        session = nil
+        markersManager?.editingMarkerID = nil
+    }
+
+    /// Build the command (if any) for the active session and clear it. Returns
+    /// nil for an empty/cancelled session or when there's nothing to edit.
+    private func commitCurrentSession() -> MarkerCommand? {
+        guard let session = session, let markersManager = markersManager else {
+            clearSession()
+            return nil
+        }
+        let text = editingText
+        clearSession()
+
+        if let target = session.target {
+            // Editing an existing marker.
+            guard target.index >= 0, target.index < markersManager.markers.count,
+                  let oldMarker = markersManager.markers[target.index] as? TextMarker,
+                  oldMarker.id == target.id else {
+                return nil
+            }
+            // Erasing all the text removes the marker.
+            if text.isEmpty {
+                return DeleteMarkerCommand(
+                    markersManager: markersManager,
+                    marker: oldMarker,
+                    at: target.index
+                )
+            }
+            // Otherwise update in place, preserving identity and color.
+            var updated = TextMarker(markerColor: oldMarker.style.strokeColor, textValue: text, origin: session.origin)
+            updated.id = oldMarker.id
+            return UpdateMarkerCommand(
                 markersManager: markersManager,
-                oldMarker: editing.originalMarker,
-                newMarker: updatedMarker,
-                at: editing.index
-            )
-            
-            editingContext = nil
-            return ToolResponse(
-                shouldContinue: false,
-                commands: [command]
+                oldMarker: oldMarker,
+                newMarker: updated,
+                at: target.index
             )
         } else {
-            // Create new marker - use the stored original click position
-            guard let originalClickPoint = currentClickPosition else {
-                return .empty
-            }
-            
-            
-            // Calculate actual text size instead of using text field frame
-            let font = NSFont.systemFont(ofSize: 14)
-            let attributes = [NSAttributedString.Key.font: font]
-            let attributedString = NSAttributedString(string: text, attributes: attributes)
-            let textBounds = attributedString.boundingRect(with: CGSize(width: 280, height: 280), options: [.usesLineFragmentOrigin, .usesFontLeading])
-            
-            let textGeometry = TextMarkerGeometry(renderBounds: CGRect(
-                origin: originalClickPoint,
-                size: CGSize(width: max(textBounds.width + 4, 20), height: max(textBounds.height + 4, 16))
-            ))
-            
-            let newMarker = TextMarker(
-                markerColor: markerColor,
-                textValue: text,
-                frame: textGeometry.renderBounds
-            )
-            
-            // Clear the stored position
-            currentClickPosition = nil
-            
-            let command = AddMarkerCommand(
-                markersManager: markersManager,
-                marker: newMarker
-            )
-            
-            return ToolResponse(
-                shouldContinue: false,
-                commands: [command]
-            )
+            // New marker: nothing to add if no text was typed.
+            guard !text.isEmpty else { return nil }
+            let newMarker = TextMarker(markerColor: session.color, textValue: text, origin: session.origin)
+            return AddMarkerCommand(markersManager: markersManager, marker: newMarker)
         }
     }
-    
-    private func handleTextCancelled() -> ToolResponse {
-        editingContext = nil
-        currentClickPosition = nil // Clear stored position on cancel
-        return ToolResponse(
-            shouldContinue: false,
-            clearSelection: true
-        )
+
+    /// End the current session, returning a response that commits it and
+    /// dismisses the field.
+    private func endSessionResponse() -> ToolResponse {
+        if let command = commitCurrentSession() {
+            return ToolResponse(shouldContinue: false, commands: [command])
+        }
+        return ToolResponse(shouldContinue: false, clearSelection: true)
     }
-    
-    // MARK: - Accessory View Creation
-    
-    private func createTextEditor(at position: CGPoint, initialText: String = "") -> AnyView {
+
+    // MARK: - Accessory View
+
+    private func makeField() -> AnyView {
+        guard let session = session else { return AnyView(EmptyView()) }
+        let textBinding = Binding<String>(
+            get: { [weak self] in self?.editingText ?? "" },
+            set: { [weak self] in self?.editingText = $0 }
+        )
         return AnyView(
-            NewTextPointerToolAccessoryView(
-                position: position,
-                initialText: initialText,
-                onTextSubmitted: { [weak self] text, frame in
-                    let action = AccessoryAction.textSubmitted(text, frame)
-                    let event = PointerEvent.accessoryAction(action)
-                    self?.eventHandler?(event)
+            TextMarkerEditorView(
+                origin: session.origin,
+                color: session.color.color,
+                text: textBinding,
+                onSubmit: { [weak self] in
+                    self?.eventHandler?(.accessoryAction(.textSubmitted))
                 },
-                onCancelled: { [weak self] in
-                    let action = AccessoryAction.textCancelled
-                    let event = PointerEvent.accessoryAction(action)
-                    self?.eventHandler?(event)
+                onCancel: { [weak self] in
+                    self?.eventHandler?(.accessoryAction(.textCancelled))
                 }
             )
+            // Distinct identity per session so a replaced field gets fresh focus.
+            .id(session.id)
         )
     }
 }
 
-// MARK: - Accessory View
-struct NewTextPointerToolAccessoryView: View {
-    let position: CGPoint
-    let initialText: String
-    let onTextSubmitted: (String, CGRect) -> Void
-    let onCancelled: () -> Void
-    
-    @State private var text: String
-    @State private var textFrame: CGRect = .zero
-    @FocusState private var isTextFieldFocused: Bool
-    
-    init(
-        position: CGPoint,
-        initialText: String,
-        onTextSubmitted: @escaping (String, CGRect) -> Void,
-        onCancelled: @escaping () -> Void
-    ) {
-        self.position = position
-        self.initialText = initialText
-        self.onTextSubmitted = onTextSubmitted
-        self.onCancelled = onCancelled
-        self._text = State(initialValue: initialText)
-    }
-    
+// MARK: - Inline WYSIWYG text editor
+//
+// Renders as the text itself: same font, size, and color as the committed
+// marker, borderless and transparent, positioned at the marker's canvas origin
+// plus the current canvas pan so it tracks the surface. There is no bordered
+// "text box" and no offset guessing — what you type is what you get.
+struct TextMarkerEditorView: View {
+    let origin: CGPoint
+    let color: Color
+    @Binding var text: String
+    let onSubmit: () -> Void
+    let onCancel: () -> Void
+
+    @EnvironmentObject var editorModel: SnapshotEditorModel
+    @FocusState private var isFocused: Bool
+
     var body: some View {
-        TextField("Enter text", text: $text, axis: .vertical)
-            .focused($isTextFieldFocused)
+        TextField("", text: $text, axis: .vertical)
+            .focused($isFocused)
             .textFieldStyle(.plain)
-            .padding(8)
+            .font(TextMarkerFont.swiftUIFont)
+            .foregroundColor(color)
+            .multilineTextAlignment(.leading)
+            .frame(maxWidth: TextMarkerFont.maxWidth, alignment: .topLeading)
+            .fixedSize(horizontal: false, vertical: true)
             .background(Color.clear)
-            .overlay(
-                RoundedRectangle(cornerRadius: 6)
-                    .stroke(Color.blue, lineWidth: 2)
-            )
-            .frame(minWidth: 120, maxWidth: 300, minHeight: 30, maxHeight: 300)
-            .fixedSize(horizontal: true, vertical: true)
-            .background(GeometryReader { geometry in
-                Color.clear
-                    .onAppear {
-                        textFrame = geometry.frame(in: .global)
-                    }
-                    .onChange(of: geometry.frame(in: .global)) { newFrame in
-                        textFrame = newFrame
-                    }
-            })
             .onKeyPress { keyPress in
                 if keyPress.key == .return {
                     if keyPress.modifiers.contains(.shift) {
-                        // Shift+Enter: insert newline
-                        text += "\n"
-                        return .handled
-                    } else {
-                        // Enter: submit text
-                        submitText()
+                        text += "\n"       // Shift+Return: newline
                         return .handled
                     }
+                    onSubmit()             // Return: commit
+                    return .handled
                 } else if keyPress.key == .escape {
-                    // Escape: cancel
-                    onCancelled()
+                    onCancel()             // Escape: discard
                     return .handled
                 }
                 return .ignored
             }
-            .offset(x: position.x, y: position.y)
+            .offset(
+                x: origin.x + editorModel.canvasOffset.x,
+                y: origin.y + editorModel.canvasOffset.y
+            )
             .onAppear {
-                isTextFieldFocused = true
+                isFocused = true
+                // When editing existing text, select it all so a single Delete
+                // clears it (and committing empty removes the marker).
+                if !text.isEmpty {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                        (NSApp.keyWindow?.firstResponder as? NSText)?.selectAll(nil)
+                    }
+                }
             }
-    }
-    
-    private func submitText() {
-        if !text.isEmpty {
-            onTextSubmitted(text, textFrame)
-        } else {
-            onCancelled()
-        }
     }
 }

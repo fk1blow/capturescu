@@ -32,7 +32,9 @@ enum PointerEvent {
 enum AccessoryAction {
     case show(CGPoint)
     case hide
-    case textSubmitted(String, CGRect)
+    /// The tool owns the live editing text, so the commit signal carries no
+    /// payload — the tool reads its current session state.
+    case textSubmitted
     case textCancelled
     case resize(CGRect)
     case move(CGPoint)

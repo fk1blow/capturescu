@@ -7,149 +7,98 @@
 
 import Foundation
 import SwiftUI
-import CoreText
+import AppKit
 
-// Temporary geometry implementation until MarkerGeometry.swift is added to project
-struct TextMarkerGeometry {
-    let renderBounds: CGRect
-    let fontSize: CGFloat = 14
-    private let textFieldToTextOffsetX: CGFloat = 8
-    private let textFieldToTextOffsetY: CGFloat = 8  // Reduced from 21 to minimize offset
-    
-    init(renderBounds: CGRect) {
-        self.renderBounds = renderBounds
-    }
-    
-    var interactiveBounds: CGRect {
-        return renderBounds.insetBy(dx: -10, dy: -10)
-    }
-    
-    func getEditingPosition(for clickPoint: CGPoint) -> CGPoint {
-        return CGPoint(
-            x: clickPoint.x - textFieldToTextOffsetX,
-            y: clickPoint.y - textFieldToTextOffsetY
+/// Single source of truth for the text-marker font, shared by the inline
+/// editor, the on-canvas draw, size measurement, and the PNG exporter. Keeping
+/// one definition guarantees the input field, the on-screen marker, and the
+/// exported image all use identical metrics.
+enum TextMarkerFont {
+    static let size: CGFloat = 14
+
+    static var nsFont: NSFont { .systemFont(ofSize: size) }
+    static var swiftUIFont: Font { .system(size: size) }
+    /// NSFont and CTFont are toll-free bridged, so the exporter renders the
+    /// exact same face as the on-screen SwiftUI text.
+    static var ctFont: CTFont { nsFont as CTFont }
+
+    /// The maximum width a text marker wraps at before adding a new line.
+    static let maxWidth: CGFloat = 280
+
+    /// Measured bounds for `text` laid out in the marker font. Only the size is
+    /// returned; the caller supplies the origin. A small padding and a minimum
+    /// size keep the hit box / highlight comfortable for short or empty text.
+    static func measureSize(of text: String) -> CGSize {
+        let attributed = NSAttributedString(string: text, attributes: [.font: nsFont])
+        let bounds = attributed.boundingRect(
+            with: CGSize(width: maxWidth, height: .greatestFiniteMagnitude),
+            options: [.usesLineFragmentOrigin, .usesFontLeading]
         )
-    }
-    
-    static func fromTextFieldFrame(_ textFieldFrame: CGRect, textContent: String) -> TextMarkerGeometry {
-        // DEBUG: Let's see what coordinates we're actually working with
-        
-        // PROBLEM: The text field frame isn't reliable because SwiftUI adjusts it
-        // SOLUTION: Use the size from the text field, but get position from stored click point
-        
-        // For now, let's just use the textFieldFrame but adjust for known SwiftUI offset issues
-        // Based on debug output: text field at 171.421875 but we positioned it at 143.421875
-        // Difference is 28 pixels, and we want final text at 164.421875 (original click)
-        // So we need to go back to the original click position
-        
-        let textFieldPadding: CGFloat = 8
-        
-        // The issue is that SwiftUI's text field positioning is inconsistent
-        // Let's calculate based on the difference we observed: 
-        // textField Y was 171.421875, but should render text at 164.421875 (click point)
-        // That's a difference of -7 pixels from textField top + padding
-        
-        let textContentFrame = CGRect(
-            x: textFieldFrame.origin.x + textFieldPadding,
-            y: textFieldFrame.origin.y - 7, // Empirical adjustment based on debug data
-            width: textFieldFrame.width - (textFieldPadding * 2),
-            height: textFieldFrame.height - (textFieldPadding * 2)
+        return CGSize(
+            width: max(ceil(bounds.width) + 4, 20),
+            height: max(ceil(bounds.height) + 4, 16)
         )
-        
-        
-        return TextMarkerGeometry(renderBounds: textContentFrame)
     }
 }
 
 struct TextMarker: Marker {
-  var id = UUID()
+    var id = UUID()
 
-  var style: MarkerStyle
-  var isHighlighted: Bool = false
+    var style: MarkerStyle
+    var isHighlighted: Bool = false
 
-  var textValueRepresentation: String = ""
-  var frameRepresentation: CGRect = CGRectZero
-  
-  // Geometry for coordinate transformations
-  private var geometry: TextMarkerGeometry {
-    return TextMarkerGeometry(renderBounds: frameRepresentation)
-  }
+    var textValueRepresentation: String = ""
+    var frameRepresentation: CGRect = .zero
 
-  init(markerColor: MarkerColor, textValue: String, frame: CGRect) {
-    style = MarkerStyle(strokeColor: markerColor)
-    textValueRepresentation = textValue
-    frameRepresentation = frame
-  }
+    init(markerColor: MarkerColor, textValue: String, frame: CGRect) {
+        style = MarkerStyle(strokeColor: markerColor)
+        textValueRepresentation = textValue
+        frameRepresentation = frame
+    }
 
-  init(markerColor: MarkerColor) {
-    self.init(markerColor: markerColor, textValue: "", frame: CGRectZero)
-  }
-  
-  /// Create TextMarker with proper geometry-based positioning
-  init(markerColor: MarkerColor, textValue: String, textFieldFrame: CGRect) {
-    style = MarkerStyle(strokeColor: markerColor)
-    textValueRepresentation = textValue
-    
-    // Use geometry to transform text field coordinates to render coordinates
-    let textGeometry = TextMarkerGeometry.fromTextFieldFrame(textFieldFrame, textContent: textValue)
-    frameRepresentation = textGeometry.renderBounds
-  }
+    init(markerColor: MarkerColor) {
+        self.init(markerColor: markerColor, textValue: "", frame: .zero)
+    }
 
-  func draw(onto ctx: GraphicsContext) {
-    let text = Text(verbatim: textValueRepresentation).font(.system(size: 14))
-    var resolvedText = ctx.resolve(text)
-    resolvedText.shading = .color(style.strokeColor.color)
-    ctx.draw(resolvedText, in: frameRepresentation)
+    /// Build a marker for `text` anchored at `origin` (top-left, canvas space).
+    /// The frame size is measured from the text so the hit box matches what is
+    /// drawn.
+    init(markerColor: MarkerColor, textValue: String, origin: CGPoint) {
+        let size = TextMarkerFont.measureSize(of: textValue)
+        self.init(
+            markerColor: markerColor,
+            textValue: textValue,
+            frame: CGRect(origin: origin, size: size)
+        )
+    }
 
-    drawHighlight(onto: ctx)
-  }
+    func draw(onto ctx: GraphicsContext) {
+        let text = Text(verbatim: textValueRepresentation).font(TextMarkerFont.swiftUIFont)
+        var resolvedText = ctx.resolve(text)
+        resolvedText.shading = .color(style.strokeColor.color)
+        // Anchor at the frame's top-left using the text's natural size (no
+        // scaling), so the rendered glyphs sit exactly where the inline editor
+        // placed them.
+        ctx.draw(resolvedText, at: frameRepresentation.origin, anchor: .topLeading)
 
-  func changeStyle(with _: MarkerStyle) {
-    // TODO:
-  }
+        drawHighlight(onto: ctx)
+    }
 
-  func getRepresentation() -> MarkerRepresentation {
-    return MarkerRepresentation.text(
-      TextMarkerRepresentation(frame: frameRepresentation, text: textValueRepresentation)
-    )
-  }
+    func changeStyle(with _: MarkerStyle) {
+        // TODO:
+    }
 
-  func markerBoundingBox(near location: CGPoint) -> BoundingBox? {
-    return HitDetectionManager.shared.isPointNearRect(location, rect: frameRepresentation)
-  }
+    func getRepresentation() -> MarkerRepresentation {
+        return MarkerRepresentation.text(
+            TextMarkerRepresentation(frame: frameRepresentation, text: textValueRepresentation)
+        )
+    }
 
+    func markerBoundingBox(near location: CGPoint) -> BoundingBox? {
+        return HitDetectionManager.shared.isPointNearRect(location, rect: frameRepresentation)
+    }
 
-  mutating func offsetMarkerBy(dx: CGFloat, dy: CGFloat) {
-    frameRepresentation = frameRepresentation.offsetBy(dx: dx, dy: dy)
-  }
-  
-  mutating func updateText(_ newText: String) {
-    textValueRepresentation = newText
-  }
-  
-  mutating func updateFrame(_ newFrame: CGRect) {
-    frameRepresentation = newFrame
-  }
-  
-  mutating func updateTextAndFrame(_ newText: String, _ newFrame: CGRect) {
-    textValueRepresentation = newText
-    frameRepresentation = newFrame
-  }
-  
-  /// Get the editing position for this text marker (where to place the text field)
-  func getEditingPosition() -> CGPoint {
-    return geometry.getEditingPosition(for: frameRepresentation.origin)
-  }
-  
-  /// Get the interactive bounds for hit detection
-  func getInteractiveBounds() -> CGRect {
-    return geometry.interactiveBounds
-  }
-  
-  /// Update from text field submission using proper geometry
-  mutating func updateFromTextFieldSubmission(text: String, textFieldFrame: CGRect) {
-    textValueRepresentation = text
-    let textGeometry = TextMarkerGeometry.fromTextFieldFrame(textFieldFrame, textContent: text)
-    frameRepresentation = textGeometry.renderBounds
-  }
+    mutating func offsetMarkerBy(dx: CGFloat, dy: CGFloat) {
+        frameRepresentation = frameRepresentation.offsetBy(dx: dx, dy: dy)
+    }
 }

@@ -80,8 +80,9 @@ struct DrawingSurfaceView: View {
         )
       }
 
-      // These are the markers that were already drawn (on paper so to speak)
-      for marker in markersManager.markers {
+      // These are the markers that were already drawn (on paper so to speak).
+      // Skip the one being edited — the inline editor stands in for it.
+      for marker in markersManager.markers where marker.id != markersManager.editingMarkerID {
         marker.draw(onto: ctx)
       }
 
@@ -128,7 +129,13 @@ struct DrawingSurfaceView: View {
   private func setupSpaceKeyMonitoring() {
     keyMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .keyUp]) { event in
       guard event.keyCode == 49 else { return event } // 49 is space key code
-      
+
+      // While a text field is being edited, space must type a space — don't
+      // hijack it for canvas panning.
+      if let responder = NSApp.keyWindow?.firstResponder, responder is NSText {
+        return event
+      }
+
       if event.type == .keyDown && !event.isARepeat {
         isSpacePressed = true
         NSCursor.openHand.set()

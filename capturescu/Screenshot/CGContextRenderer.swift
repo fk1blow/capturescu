@@ -133,36 +133,40 @@ struct CGContextRenderer {
         context.restoreGState()
     }
 
-    /// Draw text using Core Text
+    /// Draw text, matching the on-screen marker: same system font and color,
+    /// and every line rendered (not just the first).
     private static func drawText(_ textRep: TextMarkerRepresentation, style: MarkerStyle, in context: CGContext) {
         let text = textRep.text
-        let frame = textRep.frame
-
         guard !text.isEmpty else { return }
 
         context.saveGState()
 
-        // Create font and color
-        let font = CTFontCreateWithName("Helvetica" as CFString, 14, nil)
+        // Use the shared marker font so the export matches the preview exactly.
         let color = cgColor(from: style.strokeColor)
-
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.alignment = .left
         let attributes: [NSAttributedString.Key: Any] = [
-            .font: font,
-            .foregroundColor: NSColor(cgColor: color) ?? .white
+            .font: TextMarkerFont.nsFont,
+            .foregroundColor: NSColor(cgColor: color) ?? .white,
+            .paragraphStyle: paragraph
         ]
-
         let attributedString = NSAttributedString(string: text, attributes: attributes)
 
-        // Create CTLine for drawing
-        let line = CTLineCreateWithAttributedString(attributedString)
+        // Draw with AppKit's multi-line text layout so wrapping and line breaks
+        // match the on-screen SwiftUI text. The export context is already
+        // flipped to a top-left origin, so present it to AppKit as flipped.
+        let previous = NSGraphicsContext.current
+        NSGraphicsContext.current = NSGraphicsContext(cgContext: context, flipped: true)
 
-        // Position text - need to handle coordinate system
-        // CGContext text position is at baseline, and we've flipped coordinates
-        context.textMatrix = CGAffineTransform(scaleX: 1, y: -1)
-        context.textPosition = CGPoint(x: frame.origin.x, y: frame.origin.y + 14) // Adjust for font baseline
+        // Anchor at the marker's top-left; wrap at the same max width used when
+        // the marker was measured. A generous height avoids clipping tall text.
+        let drawRect = CGRect(
+            origin: textRep.frame.origin,
+            size: CGSize(width: TextMarkerFont.maxWidth, height: 100_000)
+        )
+        attributedString.draw(with: drawRect, options: [.usesLineFragmentOrigin])
 
-        CTLineDraw(line, context)
-
+        NSGraphicsContext.current = previous
         context.restoreGState()
     }
 

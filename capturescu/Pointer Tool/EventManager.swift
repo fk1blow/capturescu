@@ -65,18 +65,11 @@ class EventManager: ObservableObject {
 
   /// Main event handling method
   func handleEvent(_ event: PointerEvent) {
-    // Skip logging hover events to reduce noise
+    // Skip hover events to reduce noise
     if case .hover = event { return }
     if case .hoverEnd = event { return }
 
-    // Special logging for double-click events only
-    if case let .doubleClick(point) = event {}
-
     let response = currentTool.handleEvent(event)
-
-    // Log tool switch responses for double-click debugging
-    if let toolSwitch = response.toolSwitch {}
-
     processResponse(response)
   }
 
@@ -121,8 +114,10 @@ class EventManager: ObservableObject {
 
   /// Switch to a different tool
   func switchTool(to toolRequest: ToolSwitchRequest) {
-    // Reset current tool
+    // Reset current tool (commits any in-progress text edit) and dismiss its
+    // accessory view so a lingering text field doesn't outlive the tool.
     currentTool.reset()
+    currentAccessoryView = nil
 
     // Switch to new tool
     switch toolRequest {

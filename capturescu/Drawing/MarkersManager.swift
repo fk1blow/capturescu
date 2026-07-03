@@ -105,6 +105,9 @@ class MarkersManager: ObservableObject {
     @Published var markers: [Marker] = []
     @Published var selectedMarkerIndex: Int? = nil
     @Published var hoveredMarkerIndex: Int? = nil
+    /// Marker currently open in the inline text editor. It's hidden on the
+    /// canvas while editing so the editor field is the only thing shown.
+    @Published var editingMarkerID: UUID? = nil
     
     // Simplified drag state tracking
     private var isDragging = false
