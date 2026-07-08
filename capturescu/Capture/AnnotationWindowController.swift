@@ -62,7 +62,8 @@ final class AnnotationWindowController {
         // empty undo/redo stacks so a fresh capture can't undo into a prior session.
         HistoryManager.shared.clear()
         eventManager = EventManager(markersManager: markersManager, toolsManager: toolsManager)
-        toolsManager.selectTool(named: .FreehandPointer) // default to draw mode
+        // Open in the last creation tool used (Freehand on first launch).
+        toolsManager.selectTool(named: ToolsManager.lastCreationTool)
 
         // Measure the toolbar's real size so the window can fit it (env objects
         // must be wired first — the probe renders MiniToolbarView).
