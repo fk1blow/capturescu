@@ -15,9 +15,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // Strong ref so the menu-bar item isn't deallocated.
     private var statusItem: NSStatusItem?
+    /// Draws + animates the menu-bar icon. Lives as long as the app.
+    private var iconAnimator: MenuBarIconAnimator?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         setupStatusItem()
+
+        // Animate the menu-bar icon based on how each capture session ended.
+        flowController.onSessionEnd = { [weak self] outcome in
+            self?.iconAnimator?.play(outcome)
+        }
 
         // Meh+G — capture a new region.
         HotKeyCenter.shared.register(
@@ -35,17 +42,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func setupStatusItem() {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        // Template image: monochrome, so macOS tints it to match the menu bar
-        // (dark glyph on light bars, light glyph on dark bars) automatically.
-        let icon = NSImage(named: "MenuBarIcon")
-        icon?.isTemplate = true
-        icon?.accessibilityDescription = "Capturescu"
-        item.button?.image = icon
         item.button?.target = self
         item.button?.action = #selector(statusItemClicked)
         // Deliver both click types so we can branch on left vs right.
         item.button?.sendAction(on: [.leftMouseUp, .rightMouseUp])
         statusItem = item
+
+        // The animator draws the icon (adaptive C + coral line) and sets it on the
+        // button — including the resting state — so idle and animated frames match.
+        if let button = item.button {
+            iconAnimator = MenuBarIconAnimator(button: button)
+        }
     }
 
     @objc private func statusItemClicked() {

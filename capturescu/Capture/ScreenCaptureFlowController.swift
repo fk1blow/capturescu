@@ -15,6 +15,11 @@ final class ScreenCaptureFlowController {
     private var selectionController: RegionSelectionController?
     private var annotationController: AnnotationWindowController?
 
+    /// Fired when an annotation session ends, with how it ended. Set by
+    /// AppDelegate to drive the menu-bar icon animation. Not called when the user
+    /// cancels region selection before any capture is committed.
+    var onSessionEnd: ((CaptureOutcome) -> Void)?
+
     /// Entry point — invoked by the global hotkey and the in-app menu command.
     func beginCapture() {
         // Don't start a second selection while one is already up.
@@ -76,8 +81,9 @@ final class ScreenCaptureFlowController {
         guard selection.width >= 1, selection.height >= 1 else { return }
 
         let controller = AnnotationWindowController()
-        controller.present(fullImage: capture.fullImage, scale: scale, screenFrame: screenFrame, selection: selection) { [weak self] in
+        controller.present(fullImage: capture.fullImage, scale: scale, screenFrame: screenFrame, selection: selection) { [weak self] outcome in
             self?.annotationController = nil
+            self?.onSessionEnd?(outcome)
         }
         annotationController = controller
     }

@@ -18,7 +18,10 @@ import SwiftUI
 final class AnnotationWindowController {
     private var annotationWindow: NSWindow?
     private var toolbarPanel: NSPanel?
-    private var onClose: (() -> Void)?
+    private var onClose: ((CaptureOutcome) -> Void)?
+    /// How this session ended. Defaults to `.dismissed`; `copyAndClose` flips it
+    /// to `.copied` before teardown, so every close path reports the right outcome.
+    private var outcome: CaptureOutcome = .dismissed
     private var keyMonitor: Any?
     private var flagsMonitor: Any?
     private var clickOutsideMonitor: Any?
@@ -53,7 +56,7 @@ final class AnnotationWindowController {
     ///   - screenFrame: the captured screen's frame, global AppKit coordinates.
     ///   - selection: the user's selected region, in image-point space (top-left
     ///     origin) — the initial visible region.
-    func present(fullImage: CGImage, scale: CGFloat, screenFrame: CGRect, selection: CGRect, onClose: @escaping () -> Void) {
+    func present(fullImage: CGImage, scale: CGFloat, screenFrame: CGRect, selection: CGRect, onClose: @escaping (CaptureOutcome) -> Void) {
         self.onClose = onClose
 
         // Wire up the managers exactly like capturescuApp does.
@@ -394,6 +397,7 @@ final class AnnotationWindowController {
 
     private func copyAndClose() {
         copyToClipboard()
+        outcome = .copied
         close()
     }
 
@@ -408,7 +412,7 @@ final class AnnotationWindowController {
         toolbarPanel = nil
         annotationWindow?.orderOut(nil)
         annotationWindow = nil
-        onClose?()
+        onClose?(outcome)
         onClose = nil
     }
 }
