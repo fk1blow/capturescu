@@ -27,15 +27,19 @@ struct DrawingMarker: Marker {
     }
 
     func draw(onto graphicsContext: GraphicsContext) {
-        graphicsContext.stroke(path, with: .color(style.strokeColor.color), lineWidth: style.strokeWidth)
-
-        if style.fillColor != nil {
-            graphicsContext.fill(path, with: .color(style.fillColor!.color))
+        // Ensure we have a valid path before drawing.
+        // Guard on `path.isEmpty` (no elements) rather than `boundingRect.isEmpty`,
+        // since a perfectly horizontal/vertical line has a zero-area bounding rect
+        // but is still a valid stroke.
+        if !path.isEmpty {
+            graphicsContext.stroke(path, with: .color(style.strokeColor.color), lineWidth: style.strokeWidth)
+            
+            if style.fillColor != nil {
+                graphicsContext.fill(path, with: .color(style.fillColor!.color))
+            }
         }
 
-        if isHighlighted {
-            drawHighlight(onto: graphicsContext)
-        }
+        drawHighlight(onto: graphicsContext)
     }
 
     func changeStyle(with _: MarkerStyle) {
@@ -47,7 +51,7 @@ struct DrawingMarker: Marker {
     }
 
     func markerBoundingBox(near location: CGPoint) -> BoundingBox? {
-        return isPointNearPathAlt(testPoint: location, path: path, threshold: 20)
+        return HitDetectionManager.shared.isPointNearPath(location, path: path, threshold: 20)
     }
 
     mutating func offsetMarkerBy(dx: CGFloat, dy: CGFloat) {

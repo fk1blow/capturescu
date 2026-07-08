@@ -8,6 +8,9 @@
 import Foundation
 import SwiftUI
 
+// DEPRECATED: This class is deprecated in favor of CaptureCoordinateSystem
+// Kept for backward compatibility, but should be removed in future versions
+
 struct CaptureScreenshotBounds {
     var bounds = CGRect()
     
@@ -18,10 +21,6 @@ struct CaptureScreenshotBounds {
     var position: CGPoint {
         return CGPoint(x: bounds.minX + (bounds.width / 2), y: bounds.minY + (bounds.height / 2))
     }
-    
-    // init(bounds: CGRect[]) {
-    //
-    // }
     
     init(paths: [Path], capturedImage: CapturedPasteboardImage?) {
         self.bounds = calculate(paths: paths, capturedImage: capturedImage)
@@ -52,9 +51,9 @@ struct CaptureScreenshotBounds {
         // then the min/max values should be the same as image's
         if minX + maxX + minY + maxY == 0 && capturedImage != nil {
             minX = capturedImage!.position.x
-            maxX = capturedImage!.position.x + Double(capturedImage!.image.width)
+            maxX = capturedImage!.position.x + capturedImage!.displaySize.width
             minY = capturedImage!.position.y
-            maxY = capturedImage!.position.y + Double(capturedImage!.image.height)
+            maxY = capturedImage!.position.y + capturedImage!.displaySize.height
         }
         
         // if theres a captured image, then it needs to be taken into account
@@ -64,32 +63,36 @@ struct CaptureScreenshotBounds {
         if capturedImage != nil {
             let capturedImagePositionX = capturedImage!.position.x
             let capturedImagePositionY = capturedImage!.position.y
-            let capturedImageWidth = capturedImage!.image.width
-            let capturedImageHeight = capturedImage!.image.height
+            let capturedImageWidth = capturedImage!.displaySize.width
+            let capturedImageHeight = capturedImage!.displaySize.height
             
             if minY > capturedImagePositionY {
                 minY = capturedImagePositionY
             }
-            if maxY < capturedImagePositionY + CGFloat(capturedImageHeight) {
-                maxY = capturedImagePositionY + CGFloat(capturedImageHeight)
+            if maxY < capturedImagePositionY + capturedImageHeight {
+                maxY = capturedImagePositionY + capturedImageHeight
             }
             if minX > capturedImagePositionX {
                 minX = capturedImagePositionX
             }
-            if maxX < capturedImagePositionX + CGFloat(capturedImageWidth) {
-                maxX = capturedImagePositionX + CGFloat(capturedImageWidth)
+            if maxX < capturedImagePositionX + capturedImageWidth {
+                maxX = capturedImagePositionX + capturedImageWidth
             }
         }
         
-        // add an offset/padding to the bounds
-        let additionalPadding = 20.0
-        let additionalOffset = 10.0
-        let width = maxX - minX + additionalPadding
-        let height = maxY - minY + additionalPadding
+        // No additional padding - preserve exact image bounds
+        // Floor min coordinates and ceil max coordinates to ensure all pixels are included
+        let roundedMinX = floor(minX)
+        let roundedMinY = floor(minY)
+        let roundedMaxX = ceil(maxX)
+        let roundedMaxY = ceil(maxY)
+        
+        let width = roundedMaxX - roundedMinX
+        let height = roundedMaxY - roundedMinY
         
         return CGRect(
-            x: minX - additionalOffset,
-            y: minY - additionalOffset,
+            x: roundedMinX,
+            y: roundedMinY,
             width: width,
             height: height
         )

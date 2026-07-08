@@ -30,10 +30,8 @@ struct KeyPressView: NSViewRepresentable {
         }
 
         @objc func keyDown(with event: NSEvent) {
-            print("Key down event: \(event.keyCode)")
             
             if event.keyCode == 53 { // Escape key
-                print("Esc key pressed")
             }
             if event.keyCode == 8 && parent.isCommandPressed {
                 if let onCopy = parent.onCopy {

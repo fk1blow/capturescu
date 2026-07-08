@@ -5,118 +5,138 @@
 //  Created by Dragos Tudorache
 //
 
+import AppKit
 import Foundation
 import SwiftUI
 
 @Observable class ArrowPointerTool: PointerTool {
-    var toolName = PointerToolName.ArrowPointer
+    let toolName = PointerToolName.ArrowPointer
+    let needsAccessoryView = false
     
-    private var marker: DrawingMarker
     private var markerColor: MarkerColor
-
-    private var startPoint = CGPointZero
+    var startPoint: CGPoint?
+    var currentEndPoint: CGPoint?
+    var isDrawing = false
+    private weak var markersManager: MarkersManager?
     
-    init(color: MarkerColor) {
+    init(color: MarkerColor, markersManager: MarkersManager) {
         self.markerColor = color
-        // self.marker = DrawingMarker(markerColor: color)
-        self.marker = DrawingMarker(markerStyle: MarkerStyle(strokeColor: color, fillColor: color))
+        self.markersManager = markersManager
+    }
+    
+    func handleEvent(_ event: PointerEvent) -> ToolResponse {
+        switch event {
+        case .dragStart(let point):
+            beginDrawing(at: point)
+            return .continue
+            
+        case .dragUpdate(let point):
+            updateDrawing(at: point)
+            return .continue
+            
+        case .dragEnd(let point):
+            return endDrawing(at: point)
+            
+        case .click(let point):
+            // Handle single click as a small arrow
+            beginDrawing(at: point)
+            let endPoint = CGPoint(x: point.x + 20, y: point.y)
+            return endDrawing(at: endPoint)
+            
+        default:
+            return .empty
+        }
+    }
+    
+    func renderPreview(context: GraphicsContext) {
+        guard isDrawing, let start = startPoint, let end = currentEndPoint else { return }
+        
+        // Draw preview arrow
+        let arrowPath = createArrowPath(from: start, to: end)
+        let strokeColor = markerColor.color
+        context.stroke(arrowPath, with: .color(strokeColor), lineWidth: 2.0)
+    }
+    
+    func reset() {
+        startPoint = nil
+        currentEndPoint = nil
+        isDrawing = false
+    }
+    
+    func updateColor(_ color: MarkerColor) {
+        markerColor = color
+    }
+    
+    func updateMarkersManager(_ markersManager: MarkersManager) {
+        self.markersManager = markersManager
+    }
+    
+    // MARK: - Private Methods
+    
+    private func beginDrawing(at point: CGPoint) {
+        startPoint = point
+        currentEndPoint = point
+        isDrawing = true
+    }
+    
+    private func updateDrawing(at point: CGPoint) {
+        guard isDrawing, let start = startPoint else { return }
+        currentEndPoint = NSEvent.modifierFlags.contains(.shift)
+            ? snapPointToAngle(from: start, to: point) : point
     }
 
-    func beginMarker(at location: CGPoint) {
-        startPoint = location
-        marker.path.move(to: location)
-    }
-    
-    func updateMarker(at location: CGPoint) {
-        marker.path = buildArrowShape(startPoint: startPoint, endPoint: location)
-    }
-    
-    func endMarker(at _: CGPoint) {
-        marker.path.closeSubpath()
-        marker = DrawingMarker(markerStyle: MarkerStyle(strokeColor: markerColor, fillColor: markerColor))
-        startPoint = CGPointZero
-    }
-    
-    // To avoid repetition, this could be declared through an extension
-    func drawMarker(onto graphicsContext: GraphicsContext) {
-        marker.draw(onto: graphicsContext)
-    }
-    
-    // To avoid repetition, this could be declared through an extension
-    func getMarker() -> Marker {
-        return marker
-    }
-    
-    func clearMarker() {
-        marker = DrawingMarker(markerColor: markerColor)
-    }
+    private func endDrawing(at point: CGPoint) -> ToolResponse {
+        guard isDrawing, let start = startPoint, let markersManager = markersManager else { return .empty }
 
-    private func buildArrowShape(startPoint: CGPoint, endPoint: CGPoint) -> Path {
+        let endPoint = NSEvent.modifierFlags.contains(.shift)
+            ? snapPointToAngle(from: start, to: point) : point
+
+        // Create arrow marker using DrawingMarker
+        var marker = DrawingMarker(markerColor: markerColor)
+        marker.path = createArrowPath(from: start, to: endPoint)
+        
+        // Create command to add marker
+        let command = AddMarkerCommand(
+            markersManager: markersManager,
+            marker: marker
+        )
+        
+        // Reset state
+        reset()
+        
+        return ToolResponse(
+            shouldContinue: false,
+            commands: [command]
+        )
+    }
+    
+    private func createArrowPath(from start: CGPoint, to end: CGPoint) -> Path {
         var path = Path()
         
-        // Calculate the direction vector
-        let dx = endPoint.x - startPoint.x
-        let dy = endPoint.y - startPoint.y
+        // Main line
+        path.move(to: start)
+        path.addLine(to: end)
         
-        // Calculate the length of the arrow
-        let totalLength = sqrt(dx * dx + dy * dy)
+        // Arrow head
+        let arrowLength: CGFloat = 15
+        let arrowAngle: CGFloat = 0.5
         
-        // Normalize the direction vector
-        let unitDx = dx / totalLength
-        let unitDy = dy / totalLength
+        let angle = atan2(end.y - start.y, end.x - start.x)
         
-        // Define the arrowhead size and shaft width
-        let arrowHeadLength: CGFloat = 20
-        let arrowHeadWidth: CGFloat = 25
-        let arrowShaftWidth: CGFloat = 6
-        
-        // Calculate the base of the arrowhead
-        let arrowHeadBase = CGPoint(
-            x: endPoint.x - unitDx * arrowHeadLength,
-            y: endPoint.y - unitDy * arrowHeadLength
+        let arrowPoint1 = CGPoint(
+            x: end.x - arrowLength * cos(angle - arrowAngle),
+            y: end.y - arrowLength * sin(angle - arrowAngle)
         )
         
-        // Calculate the arrowhead points
-        let arrowHeadLeft = CGPoint(
-            x: arrowHeadBase.x - unitDy * arrowHeadWidth / 2,
-            y: arrowHeadBase.y + unitDx * arrowHeadWidth / 2
+        let arrowPoint2 = CGPoint(
+            x: end.x - arrowLength * cos(angle + arrowAngle),
+            y: end.y - arrowLength * sin(angle + arrowAngle)
         )
         
-        let arrowHeadRight = CGPoint(
-            x: arrowHeadBase.x + unitDy * arrowHeadWidth / 2,
-            y: arrowHeadBase.y - unitDx * arrowHeadWidth / 2
-        )
-
-        // Calculate the shaft points starting from startPoint to arrowHeadBase
-        let arrowShaftLeftStart = CGPoint(
-            x: startPoint.x - unitDy * arrowShaftWidth / 2,
-            y: startPoint.y + unitDx * arrowShaftWidth / 2
-        )
-        
-        let arrowShaftRightStart = CGPoint(
-            x: startPoint.x + unitDy * arrowShaftWidth / 2,
-            y: startPoint.y - unitDx * arrowShaftWidth / 2
-        )
-        
-        let arrowShaftLeftEnd = CGPoint(
-            x: arrowHeadBase.x - unitDy * arrowShaftWidth / 2,
-            y: arrowHeadBase.y + unitDx * arrowShaftWidth / 2
-        )
-        
-        let arrowShaftRightEnd = CGPoint(
-            x: arrowHeadBase.x + unitDy * arrowShaftWidth / 2,
-            y: arrowHeadBase.y - unitDx * arrowShaftWidth / 2
-        )
-
-        // Draw the arrow shaft and head
-        path.move(to: arrowShaftLeftStart)
-        path.addLine(to: arrowShaftLeftEnd)
-        path.addLine(to: arrowHeadLeft)
-        path.addLine(to: endPoint) // Arrow tip
-        path.addLine(to: arrowHeadRight)
-        path.addLine(to: arrowShaftRightEnd)
-        path.addLine(to: arrowShaftRightStart)
-        path.addLine(to: arrowShaftLeftStart)
+        path.move(to: end)
+        path.addLine(to: arrowPoint1)
+        path.move(to: end)
+        path.addLine(to: arrowPoint2)
         
         return path
     }

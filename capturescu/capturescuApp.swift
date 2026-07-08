@@ -5,37 +5,18 @@
 //  Created by Dragos Tudorache
 //
 
+import AppKit
 import SwiftUI
 
 @main
 struct capturescuApp: App {
-    private let selectionManager = ToolsManager()
-    private let markersManager = MarkersManager()
-    private let keyboardManager = KeyboardManager.shared
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     var body: some Scene {
-        WindowGroup {
-            // don't want to receive multiple events from the menu commands
-            // while previewing the app in xcode
-            if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] != "1" {
-                ContentView()
-                    .environmentObject(selectionManager)
-                    .environmentObject(markersManager)
-                    .customWindowStyle()
-            }
-        }
-        .commands {
-            CommandGroup(replacing: .pasteboard) {
-                Button("Copy") {
-                    keyboardManager.trigger(command: .copy)
-                }
-                .keyboardShortcut("c", modifiers: .command)
-
-                Button("Paste") {
-                    keyboardManager.trigger(command: .paste)
-                }
-                .keyboardShortcut("v", modifiers: .command)
-            }
-        }
+        // Menu-bar-only app: no main window, no Dock icon (LSUIElement). The
+        // menu-bar item is an AppKit NSStatusItem owned by AppDelegate so it can
+        // distinguish left-click (capture immediately) from right-click (menu).
+        // This empty Settings scene just satisfies the Scene builder.
+        Settings { EmptyView() }
     }
 }

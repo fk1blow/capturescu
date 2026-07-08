@@ -18,26 +18,37 @@ struct ToolPickerView: View {
             ToolbarButton(
                 iconName: "pencil",
                 fontWeight: .medium,
+                help: "Freehand",
                 active: selectionManager.pointerTool.toolName == PointerToolName.FreehandPointer,
                 action: { selectionManager.selectTool(named: .FreehandPointer) }
             )
             ToolbarButton(
                 iconName: "pencil.line",
                 fontWeight: .medium,
+                help: "Line",
                 active: selectionManager.pointerTool.toolName == PointerToolName.LinePointer,
                 action: { selectionManager.selectTool(named: .LinePointer) }
             )
             ToolbarButton(
                 iconName: "arrow.down.left",
                 fontWeight: .medium,
+                help: "Arrow",
                 active: selectionManager.pointerTool.toolName == PointerToolName.ArrowPointer,
                 action: { selectionManager.selectTool(named: .ArrowPointer) }
             )
             ToolbarButton(
                 iconName: "character",
                 fontWeight: .medium,
+                help: "Text",
                 active: selectionManager.pointerTool.toolName == PointerToolName.TextPointer,
                 action: { selectionManager.selectTool(named: .TextPointer) }
+            )
+            ToolbarButton(
+                iconName: "arrow.up.left.and.arrow.down.right",
+                fontWeight: .medium,
+                help: "Select",
+                active: selectionManager.pointerTool.toolName == PointerToolName.SelectionPointer,
+                action: { selectionManager.selectTool(named: .SelectionPointer) }
             )
         }
     }

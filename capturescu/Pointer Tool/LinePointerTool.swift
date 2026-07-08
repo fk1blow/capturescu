@@ -5,51 +5,111 @@
 //  Created by Dragos Tudorache
 //
 
+import AppKit
 import Foundation
 import SwiftUI
 
 @Observable class LinePointerTool: PointerTool {
-    var toolName = PointerToolName.LinePointer
-
-    private var marker: DrawingMarker
+    let toolName = PointerToolName.LinePointer
+    let needsAccessoryView = false
+    
     private var markerColor: MarkerColor
-
-    private var startPoint = CGPointZero
-
-    init(color: MarkerColor) {
+    var startPoint: CGPoint?
+    var currentEndPoint: CGPoint?
+    var isDrawing = false
+    private weak var markersManager: MarkersManager?
+    
+    init(color: MarkerColor, markersManager: MarkersManager) {
         self.markerColor = color
-        self.marker = DrawingMarker(markerColor: color)
+        self.markersManager = markersManager
     }
-
-    func beginMarker(at location: CGPoint) {
-        startPoint = location
-        marker.path.move(to: location)
-    }
-
-    func updateMarker(at location: CGPoint) {
-        marker.path = Path { path in
-            path.move(to: startPoint)
-            path.addLine(to: location)
+    
+    func handleEvent(_ event: PointerEvent) -> ToolResponse {
+        switch event {
+        case .dragStart(let point):
+            beginDrawing(at: point)
+            return .continue
+            
+        case .dragUpdate(let point):
+            updateDrawing(at: point)
+            return .continue
+            
+        case .dragEnd(let point):
+            return endDrawing(at: point)
+            
+        case .click(let point):
+            // Handle single click as a small dot
+            beginDrawing(at: point)
+            return endDrawing(at: point)
+            
+        default:
+            return .empty
         }
     }
-
-    func endMarker(at _: CGPoint) {
-        marker.path.closeSubpath()
-        marker = DrawingMarker(markerColor: markerColor)
-        startPoint = CGPointZero
+    
+    func renderPreview(context: GraphicsContext) {
+        guard isDrawing, let start = startPoint, let end = currentEndPoint else { return }
+        
+        // Draw preview line
+        var path = Path()
+        path.move(to: start)
+        path.addLine(to: end)
+        
+        let strokeColor = markerColor.color
+        context.stroke(path, with: .color(strokeColor), lineWidth: 2.0)
+    }
+    
+    func reset() {
+        startPoint = nil
+        currentEndPoint = nil
+        isDrawing = false
+    }
+    
+    func updateColor(_ color: MarkerColor) {
+        markerColor = color
+    }
+    
+    func updateMarkersManager(_ markersManager: MarkersManager) {
+        self.markersManager = markersManager
+    }
+    
+    // MARK: - Private Methods
+    
+    private func beginDrawing(at point: CGPoint) {
+        startPoint = point
+        currentEndPoint = point
+        isDrawing = true
+    }
+    
+    private func updateDrawing(at point: CGPoint) {
+        guard isDrawing, let start = startPoint else { return }
+        currentEndPoint = NSEvent.modifierFlags.contains(.shift)
+            ? snapPointToAngle(from: start, to: point) : point
     }
 
-    // To avoid repetition, this could be declared through an extension
-    func drawMarker(onto graphicsContext: GraphicsContext) {
-        marker.draw(onto: graphicsContext)
-    }
+    private func endDrawing(at point: CGPoint) -> ToolResponse {
+        guard isDrawing, let start = startPoint, let markersManager = markersManager else { return .empty }
 
-    // To avoid repetition, this could be declared through an extension
-    func getMarker() -> Marker {
-        return marker
-    }
+        let endPoint = NSEvent.modifierFlags.contains(.shift)
+            ? snapPointToAngle(from: start, to: point) : point
 
-    func clearMarker() {
-        marker = DrawingMarker(markerColor: markerColor)
+        // Create line marker using DrawingMarker
+        var marker = DrawingMarker(markerColor: markerColor)
+        marker.path.move(to: start)
+        marker.path.addLine(to: endPoint)
+        
+        // Create command to add marker
+        let command = AddMarkerCommand(
+            markersManager: markersManager,
+            marker: marker
+        )
+        
+        // Reset state
+        reset()
+        
+        return ToolResponse(
+            shouldContinue: false,
+            commands: [command]
+        )
     }
 }

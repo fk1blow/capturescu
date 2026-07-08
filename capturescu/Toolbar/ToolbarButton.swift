@@ -14,8 +14,10 @@ struct ToolbarButton: View {
     var active = false
     var rotation = Angle.zero
     var fontSize = 18.0
+    /// Hover tooltip text; empty shows none.
+    var help: String = ""
     var action: (() -> Void)?
-    
+
     @State private var isHovering = false
 
     var body: some View {
@@ -32,25 +34,28 @@ struct ToolbarButton: View {
         })
         // .buttonStyle(PlainButtonStyle())
         .buttonStyle(.borderless)
+        .help(help)
         .onHover { hovering in
             isHovering = hovering
         }
     }
-    
+
     // Initializer without action and active state
-    init(iconName: String, fontWeight: Font.Weight = .regular, rotation: Angle = .zero, fontSize: Double = 18.0) {
+    init(iconName: String, fontWeight: Font.Weight = .regular, rotation: Angle = .zero, fontSize: Double = 18.0, help: String = "") {
         self.iconName = iconName
         self.fontWeight = fontWeight
         self.rotation = rotation
         self.fontSize = fontSize
+        self.help = help
     }
 
     // Initializer with action and active state
-    init(iconName: String, fontWeight: Font.Weight = .regular, rotation: Angle = .zero, fontSize: Double = 18.0, active: Bool, action: @escaping () -> Void) {
+    init(iconName: String, fontWeight: Font.Weight = .regular, rotation: Angle = .zero, fontSize: Double = 18.0, help: String = "", active: Bool, action: @escaping () -> Void) {
         self.iconName = iconName
         self.fontWeight = fontWeight
         self.rotation = rotation
         self.fontSize = fontSize
+        self.help = help
         self.active = active
         self.action = action
     }
