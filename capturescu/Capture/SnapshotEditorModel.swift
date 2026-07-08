@@ -50,9 +50,10 @@ final class SnapshotEditorModel: ObservableObject {
     let minSize: CGSize
     /// Full image's point size (== `screenFrame.size`).
     let imagePointSize: CGSize
-    /// Where the *window* may live, global AppKit (visibleFrame inset by margin).
-    let workingArea: CGRect
-    /// Where `visibleRect` (the content) may live, in IMAGE-POINT space.
+    /// Where `visibleRect` (the content) may live, in IMAGE-POINT space — the whole
+    /// frozen image. Because the image spans the captured screen, the editor may sit
+    /// flush against any screen edge (menu bar / Dock included) and lands exactly
+    /// where the region was captured instead of being shoved inward.
     let allowedBounds: CGRect
 
     /// The portion of the full image currently shown (image-point space, top-left
@@ -72,8 +73,6 @@ final class SnapshotEditorModel: ObservableObject {
     init(fullImage: CGImage,
          scale: CGFloat,
          screenFrame: CGRect,
-         visibleFrame: CGRect,
-         edgeMargin: CGFloat,
          border: CGFloat,
          grabMargin: CGFloat,
          minSize: CGSize) {
@@ -86,21 +85,11 @@ final class SnapshotEditorModel: ObservableObject {
         self.imagePointSize = CGSize(width: CGFloat(fullImage.width) / scale,
                                      height: CGFloat(fullImage.height) / scale)
 
-        let working = visibleFrame.insetBy(dx: edgeMargin, dy: edgeMargin)
-        self.workingArea = working
-
-        // The content (inside the border) must stay inside the working area; map
-        // that allowance from global AppKit into image-point space, then clip to
-        // the image itself (can't reveal beyond the captured screen). The window
-        // also carries the transparent grab ring, so reserve border + grabMargin.
-        let contentGlobal = working.insetBy(dx: border + grabMargin, dy: border + grabMargin)
-        let allowedFromScreen = CGRect(
-            x: contentGlobal.minX - screenFrame.minX,
-            y: screenFrame.maxY - contentGlobal.maxY,
-            width: contentGlobal.width,
-            height: contentGlobal.height
-        )
-        self.allowedBounds = allowedFromScreen.intersection(CGRect(origin: .zero, size: imagePointSize))
+        // The visible region may be placed anywhere within the frozen full-screen
+        // image. The transparent grab ring around edge-flush captures simply runs
+        // past the screen and is clipped — a fair trade for landing exactly where
+        // the region was captured (menu bar / Dock included).
+        self.allowedBounds = CGRect(origin: .zero, size: imagePointSize)
     }
 
     // MARK: - Derived display state

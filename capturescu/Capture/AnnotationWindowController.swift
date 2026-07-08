@@ -34,6 +34,10 @@ final class AnnotationWindowController {
     private var capturedImage: CapturedPasteboardImage!
     /// Owns the visible-region geometry; the window + toolbar follow its changes.
     private var editorModel: SnapshotEditorModel!
+    /// The captured screen's visible frame (excludes menu bar / Dock). The window
+    /// may sit over those areas so it lands where the region was captured, but the
+    /// toolbar is placed relative to this so it never hides under the Dock.
+    private var screenVisibleFrame: CGRect = .zero
 
     /// The toolbar's real intrinsic size, measured per-present (fallback below).
     private var toolbarSize = CGSize(width: 280, height: 58)
@@ -45,10 +49,6 @@ final class AnnotationWindowController {
     /// Transparent ring around the visible snapshot where the resize handles live,
     /// so you grab from *outside* the dashed border. The window is grown by this.
     private let grabMargin: CGFloat = 14
-    /// Keep the window this far from the screen edges, so the dashed border is
-    /// always visible and there's breathing room. Captures larger than the
-    /// resulting area are shown 1:1 and panned via the hand tool.
-    private let edgeMargin: CGFloat = 12
 
     /// - Parameters:
     ///   - fullImage: the frozen WHOLE-screen capture (pixels). The editor shows
@@ -82,17 +82,18 @@ final class AnnotationWindowController {
             originalPNGData: nil
         )
 
-        // Working area to keep the editor on-screen. A nil screen means we can't
-        // determine one, so fall back to the captured screen frame (no clamping
-        // beyond the image itself).
-        let working = visibleFrame(containing: CGPoint(x: screenFrame.midX, y: screenFrame.midY)) ?? screenFrame
+        // The editor may sit anywhere on the captured screen — including over the
+        // menu bar / Dock — so a region grabbed near a screen edge lands exactly
+        // where it was captured instead of being shoved inward. The window is
+        // raised above the menu bar (below) so it stays visible there. The toolbar,
+        // by contrast, is kept clear of the menu bar / Dock via `screenVisibleFrame`.
+        let center = CGPoint(x: screenFrame.midX, y: screenFrame.midY)
+        screenVisibleFrame = visibleFrame(containing: center) ?? screenFrame
 
         let model = SnapshotEditorModel(
             fullImage: fullImage,
             scale: scale,
             screenFrame: screenFrame,
-            visibleFrame: working,
-            edgeMargin: edgeMargin,
             border: borderWidth,
             grabMargin: grabMargin,
             minSize: CGSize(width: 48, height: 48)
@@ -124,7 +125,9 @@ final class AnnotationWindowController {
     /// editor's bottom edge instead.
     private func toolbarOverlaps() -> Bool {
         let belowOriginY = editorModel.snapshotFrame.minY - toolbarTopGap - toolbarSize.height
-        return belowOriginY < editorModel.workingArea.minY
+        // Overlap once the band would dip below the visible area (over the Dock),
+        // not the full working area — the toolbar must stay clear of the Dock.
+        return belowOriginY < screenVisibleFrame.minY
     }
 
     /// The visible frame (excludes menu bar / Dock) of the screen containing the
@@ -299,7 +302,10 @@ final class AnnotationWindowController {
         // No drop shadow — the dashed border is the only frame, so small
         // snapshots don't get a gray shadow halo around them.
         window.hasShadow = false
-        window.level = .floating
+        // Above the menu bar so an editor placed over a top/bottom-edge capture
+        // renders on top of it instead of being hidden beneath it. Matches the
+        // selection overlay, which is also drawn over the menu bar.
+        window.level = .screenSaver
         window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         window.contentView = NSHostingView(rootView: view)
         window.setFrame(frame, display: true)
@@ -338,9 +344,10 @@ final class AnnotationWindowController {
             defer: false
         )
         panel.isFloatingPanel = true
-        // One level above the annotation window (.floating) so the toolbar is
-        // never covered when the snapshot window is clicked/reordered.
-        panel.level = NSWindow.Level(rawValue: NSWindow.Level.floating.rawValue + 1)
+        // One level above the annotation window (.screenSaver) so the toolbar is
+        // never covered when the snapshot window is clicked/reordered, and so it
+        // stays visible when it overlaps a snapshot placed over the Dock.
+        panel.level = NSWindow.Level(rawValue: NSWindow.Level.screenSaver.rawValue + 1)
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.hasShadow = true
