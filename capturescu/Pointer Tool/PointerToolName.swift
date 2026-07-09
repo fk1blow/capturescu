@@ -25,4 +25,18 @@ enum PointerToolName: String {
         case .SelectionPointer, .HandPointer: return false
         }
     }
+
+    /// Stroke-based tools whose thickness is user-adjustable.
+    var usesStrokeWidth: Bool {
+        switch self {
+        case .FreehandPointer, .ArrowPointer, .LinePointer: return true
+        default: return false
+        }
+    }
+
+    /// Tools whose text point size is user-adjustable.
+    var usesFontSize: Bool { self == .TextPointer }
+
+    /// Whether the contextual size control is meaningful for this tool.
+    var usesSize: Bool { usesStrokeWidth || usesFontSize }
 }

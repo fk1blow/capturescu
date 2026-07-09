@@ -14,6 +14,9 @@ import AppKit
     let needsAccessoryView = true
 
     private var markerColor: MarkerColor
+    /// Font size applied to newly created text markers. Existing markers keep the
+    /// size they were created with when re-edited.
+    var fontSize: CGFloat = TextMarkerFont.defaultSize
     private weak var markersManager: MarkersManager?
     private var eventHandler: ((PointerEvent) -> Void)?
 
@@ -33,6 +36,7 @@ import AppKit
         let origin: CGPoint          // canvas-space top-left of the text
         let target: TextEditTarget?  // nil = creating a new marker
         let color: MarkerColor
+        let fontSize: CGFloat
     }
 
     private var session: EditSession?
@@ -86,6 +90,10 @@ import AppKit
         markerColor = color
     }
 
+    func updateFontSize(_ size: CGFloat) {
+        fontSize = size
+    }
+
     func updateMarkersManager(_ markersManager: MarkersManager) {
         self.markersManager = markersManager
     }
@@ -107,6 +115,7 @@ import AppKit
                         origin: textMarker.frameRepresentation.origin,
                         target: TextEditTarget(index: editable.index, id: textMarker.id),
                         color: textMarker.style.strokeColor,
+                        fontSize: textMarker.fontSize,
                         initialText: textMarker.textValueRepresentation
                     )
                     return ToolResponse(
@@ -127,7 +136,7 @@ import AppKit
         }
 
         // Empty space — start a new text marker at the click point.
-        startSession(origin: point, target: nil, color: markerColor, initialText: "")
+        startSession(origin: point, target: nil, color: markerColor, fontSize: fontSize, initialText: "")
         return ToolResponse(
             shouldContinue: true,
             commands: commands,
@@ -148,6 +157,7 @@ import AppKit
             origin: textMarker.frameRepresentation.origin,
             target: TextEditTarget(index: index, id: textMarker.id),
             color: textMarker.style.strokeColor,
+            fontSize: textMarker.fontSize,
             initialText: textMarker.textValueRepresentation
         )
         return ToolResponse(
@@ -176,8 +186,8 @@ import AppKit
 
     // MARK: - Session management
 
-    private func startSession(origin: CGPoint, target: TextEditTarget?, color: MarkerColor, initialText: String) {
-        session = EditSession(id: UUID(), origin: origin, target: target, color: color)
+    private func startSession(origin: CGPoint, target: TextEditTarget?, color: MarkerColor, fontSize: CGFloat, initialText: String) {
+        session = EditSession(id: UUID(), origin: origin, target: target, color: color, fontSize: fontSize)
         editingText = initialText
         // Hide the marker being edited so only the editor field shows.
         markersManager?.editingMarkerID = target?.id
@@ -214,8 +224,8 @@ import AppKit
                     at: target.index
                 )
             }
-            // Otherwise update in place, preserving identity and color.
-            var updated = TextMarker(markerColor: oldMarker.style.strokeColor, textValue: text, origin: session.origin)
+            // Otherwise update in place, preserving identity, color, and size.
+            var updated = TextMarker(markerColor: oldMarker.style.strokeColor, textValue: text, origin: session.origin, fontSize: session.fontSize)
             updated.id = oldMarker.id
             return UpdateMarkerCommand(
                 markersManager: markersManager,
@@ -226,7 +236,7 @@ import AppKit
         } else {
             // New marker: nothing to add if no text was typed.
             guard !text.isEmpty else { return nil }
-            let newMarker = TextMarker(markerColor: session.color, textValue: text, origin: session.origin)
+            let newMarker = TextMarker(markerColor: session.color, textValue: text, origin: session.origin, fontSize: session.fontSize)
             return AddMarkerCommand(markersManager: markersManager, marker: newMarker)
         }
     }
@@ -252,6 +262,7 @@ import AppKit
             TextMarkerEditorView(
                 origin: session.origin,
                 color: session.color.color,
+                fontSize: session.fontSize,
                 text: textBinding,
                 onSubmit: { [weak self] in
                     self?.eventHandler?(.accessoryAction(.textSubmitted))
@@ -275,6 +286,7 @@ import AppKit
 struct TextMarkerEditorView: View {
     let origin: CGPoint
     let color: Color
+    let fontSize: CGFloat
     @Binding var text: String
     let onSubmit: () -> Void
     let onCancel: () -> Void
@@ -286,7 +298,7 @@ struct TextMarkerEditorView: View {
         TextField("", text: $text, axis: .vertical)
             .focused($isFocused)
             .textFieldStyle(.plain)
-            .font(TextMarkerFont.swiftUIFont)
+            .font(TextMarkerFont.swiftUIFont(size: fontSize))
             .foregroundColor(color)
             .multilineTextAlignment(.leading)
             .frame(maxWidth: TextMarkerFont.maxWidth, alignment: .topLeading)

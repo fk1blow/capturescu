@@ -14,6 +14,7 @@ import SwiftUI
     let needsAccessoryView = false
     
     private var markerColor: MarkerColor
+    var strokeWidth: CGFloat = 2
     var startPoint: CGPoint?
     var currentEndPoint: CGPoint?
     var isDrawing = false
@@ -55,8 +56,11 @@ import SwiftUI
         path.move(to: start)
         path.addLine(to: end)
         
+        // Round caps/joins so the preview matches the committed marker, which is
+        // stroked the same way.
         let strokeColor = markerColor.color
-        context.stroke(path, with: .color(strokeColor), lineWidth: 2.0)
+        context.stroke(path, with: .color(strokeColor),
+                       style: StrokeStyle(lineWidth: strokeWidth, lineCap: .round, lineJoin: .round))
     }
     
     func reset() {
@@ -68,7 +72,11 @@ import SwiftUI
     func updateColor(_ color: MarkerColor) {
         markerColor = color
     }
-    
+
+    func updateStrokeWidth(_ width: CGFloat) {
+        strokeWidth = width
+    }
+
     func updateMarkersManager(_ markersManager: MarkersManager) {
         self.markersManager = markersManager
     }
@@ -95,6 +103,7 @@ import SwiftUI
 
         // Create line marker using DrawingMarker
         var marker = DrawingMarker(markerColor: markerColor)
+        marker.style.strokeWidth = strokeWidth
         marker.path.move(to: start)
         marker.path.addLine(to: endPoint)
         
