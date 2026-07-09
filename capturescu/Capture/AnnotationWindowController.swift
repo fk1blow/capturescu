@@ -236,6 +236,31 @@ final class AnnotationWindowController {
                 return nil
             }
 
+            // +/-, and ↑/↓, nudge the current tool's size (stroke width for
+            // freehand/line/arrow, font size for text). Accept both the shifted
+            // and unshifted glyphs so users don't have to hold Shift for "+".
+            // Skipped when a command modifier is down, and never while a text
+            // field is capturing keys so typing "+"/"-" or moving the caret with
+            // the arrows inside a text marker still works.
+            if !mods.contains(.command), self.toolsManager.currentTool.usesSize {
+                let delta: CGFloat?
+                switch event.keyCode {
+                case 126: delta = 1   // up arrow
+                case 125: delta = -1  // down arrow
+                default:
+                    switch event.charactersIgnoringModifiers {
+                    case "+", "=": delta = 1
+                    case "-", "_": delta = -1
+                    default: delta = nil
+                    }
+                }
+                if let delta {
+                    if NSApp.keyWindow?.firstResponder is NSText { return event }
+                    self.toolsManager.adjustCurrentToolSize(by: delta)
+                    return nil
+                }
+            }
+
             return event
         }
     }

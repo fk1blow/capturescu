@@ -75,8 +75,9 @@ struct MiniToolbarView: View {
 
             // Contextual size control: stroke width for the drawing tools, font
             // size for the text tool. Hidden for Hand / Selection where it has no
-            // meaning.
-            if toolsManager.currentTool.usesSize {
+            // meaning — but kept visible during a ⌘-hold pan (sizingTool reflects
+            // the creation tool being held, not the transient Hand).
+            if toolsManager.sizingTool.usesSize {
                 Divider().frame(height: 26).opacity(0.5)
                 ToolSizeControl()
             }
@@ -114,8 +115,8 @@ private struct ToolSizeControl: View {
     @State private var isHovering = false
     @State private var isShowingPopover = false
 
-    private var isText: Bool { toolsManager.currentTool.usesFontSize }
-    private var range: ClosedRange<CGFloat> { isText ? 10 ... 48 : 1 ... 20 }
+    private var isText: Bool { toolsManager.sizingTool.usesFontSize }
+    private var range: ClosedRange<CGFloat> { isText ? ToolsManager.textSizeRange : ToolsManager.strokeWidthRange }
     private var iconName: String { isText ? "textformat.size" : "lineweight" }
 
     private var value: Binding<CGFloat> {

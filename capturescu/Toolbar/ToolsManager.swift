@@ -13,12 +13,39 @@ class ToolsManager: ObservableObject {
     @Published var currentTool: PointerToolName = ToolsManager.lastCreationTool
 
     /// Stroke width for freehand / line / arrow, and font size for text. Both are
-    /// @Published so the toolbar's size control and the canvas react live. Defaults
-    /// match the historical hard-coded values (2pt stroke, 14pt text).
-    @Published var selectedTextSize: CGFloat = 14
-    @Published var selectedStrokeWidth: CGFloat = 2
+    /// @Published so the toolbar's size control and the canvas react live. The text
+    /// default tracks `TextMarkerFont.defaultSize` so there's a single source of
+    /// truth for the starting font size.
+    @Published var selectedTextSize: CGFloat = TextMarkerFont.defaultSize
+    @Published var selectedStrokeWidth: CGFloat = 3
+
+    /// Allowed ranges for the contextual size control, shared by the toolbar
+    /// slider and the +/- keyboard shortcuts so both stay clamped identically.
+    static let textSizeRange: ClosedRange<CGFloat> = 10 ... 48
+    static let strokeWidthRange: ClosedRange<CGFloat> = 1 ... 20
+
+    /// Nudge the current tool's size by `delta` points, clamped to its range.
+    /// Adjusts font size for the text tool, stroke width for freehand/line/arrow,
+    /// and is a no-op for tools without an adjustable size (Hand, Selection).
+    func adjustCurrentToolSize(by delta: CGFloat) {
+        if currentTool.usesFontSize {
+            let r = Self.textSizeRange
+            selectedTextSize = min(max(selectedTextSize + delta, r.lowerBound), r.upperBound)
+        } else if currentTool.usesStrokeWidth {
+            let r = Self.strokeWidthRange
+            selectedStrokeWidth = min(max(selectedStrokeWidth + delta, r.lowerBound), r.upperBound)
+        }
+    }
 
     private var toolBeforeTemporaryHold: PointerToolName?
+
+    /// The tool whose contextual size the toolbar should reflect. During a
+    /// temporary hold (⌘-pan) `currentTool` is Hand, but we keep showing the size
+    /// of the creation tool being held so the picker doesn't blink out of the
+    /// toolbar every time the user grabs ⌘ to reposition a marker.
+    var sizingTool: PointerToolName {
+        toolBeforeTemporaryHold ?? currentTool
+    }
 
     /// The last creation tool the user picked, remembered across captures and app
     /// launches so a fresh annotation window opens in the tool they left off with.

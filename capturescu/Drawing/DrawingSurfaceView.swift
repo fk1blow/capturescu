@@ -338,26 +338,30 @@ extension View {
 // MARK: - Custom Cursors
 
 enum CustomCursor {
-  /// A small filled dot for the freehand tool — a "pen tip" that marks exactly
-  /// where the stroke will land. A white ring keeps it visible on any background.
+  /// A small hollow ring for the freehand tool — a "pen tip" that pinpoints
+  /// where the stroke will land without covering it. The ring is white with a
+  /// thin dark outline so it stays visible on both dark and light backgrounds,
+  /// while the open center keeps the exact target pixel in view.
   static let dot: NSCursor = {
-    let diameter: CGFloat = 9
-    let padding: CGFloat = 2 // room for the ring so it isn't clipped
+    let diameter: CGFloat = 6
+    let padding: CGFloat = 2 // room for the ring + outline so it isn't clipped
     let size = NSSize(width: diameter + padding * 2, height: diameter + padding * 2)
 
     let image = NSImage(size: size, flipped: false) { _ in
       let rect = NSRect(x: padding, y: padding, width: diameter, height: diameter)
-      // White ring for contrast on dark backgrounds…
+      // Dark outline just outside the ring for contrast on light backgrounds…
+      let outline = NSBezierPath(ovalIn: rect.insetBy(dx: -0.5, dy: -0.5))
+      outline.lineWidth = 1
+      NSColor.black.withAlphaComponent(0.6).setStroke()
+      outline.stroke()
+      // …and the white ring itself for contrast on dark ones.
       let ring = NSBezierPath(ovalIn: rect)
-      ring.lineWidth = 2
+      ring.lineWidth = 1.5
       NSColor.white.setStroke()
       ring.stroke()
-      // …and a dark fill for contrast on light ones.
-      NSColor.black.setFill()
-      NSBezierPath(ovalIn: rect.insetBy(dx: 1, dy: 1)).fill()
       return true
     }
-    // Hotspot at the center of the dot so it draws exactly under the point.
+    // Hotspot at the center of the ring so it draws exactly under the point.
     return NSCursor(image: image, hotSpot: NSPoint(x: size.width / 2, y: size.height / 2))
   }()
 }
