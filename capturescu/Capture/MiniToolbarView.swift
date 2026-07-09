@@ -17,25 +17,31 @@ struct MiniToolbarView: View {
     var copyAction: () -> Void
     var closeAction: () -> Void
 
+    private var activeTint: Color {
+        toolsManager.selectedColor.color
+    }
+
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 6) {
             ColorPickerButton()
                 .help("Color")
 
-            Divider().frame(height: 28)
+            Divider().frame(height: 26).opacity(0.5)
 
             ToolbarButton(
-                iconName: "pencil",
+                iconName: "pencil.and.scribble",
                 help: "Freehand",
-                active: toolsManager.currentTool == .FreehandPointer
+                active: toolsManager.currentTool == .FreehandPointer,
+                activeTint: activeTint
             ) {
                 toolsManager.selectTool(named: .FreehandPointer)
             }
 
             ToolbarButton(
-                iconName: "pencil.line",
+                iconName: "line.diagonal",
                 help: "Line",
-                active: toolsManager.currentTool == .LinePointer
+                active: toolsManager.currentTool == .LinePointer,
+                activeTint: activeTint
             ) {
                 toolsManager.selectTool(named: .LinePointer)
             }
@@ -43,7 +49,8 @@ struct MiniToolbarView: View {
             ToolbarButton(
                 iconName: "arrow.down.left",
                 help: "Arrow",
-                active: toolsManager.currentTool == .ArrowPointer
+                active: toolsManager.currentTool == .ArrowPointer,
+                activeTint: activeTint
             ) {
                 toolsManager.selectTool(named: .ArrowPointer)
             }
@@ -51,7 +58,8 @@ struct MiniToolbarView: View {
             ToolbarButton(
                 iconName: "character",
                 help: "Text",
-                active: toolsManager.currentTool == .TextPointer
+                active: toolsManager.currentTool == .TextPointer,
+                activeTint: activeTint
             ) {
                 toolsManager.selectTool(named: .TextPointer)
             }
@@ -59,12 +67,13 @@ struct MiniToolbarView: View {
             ToolbarButton(
                 iconName: "hand.draw",
                 help: "Move (hold ⌘)",
-                active: toolsManager.currentTool == .HandPointer
+                active: toolsManager.currentTool == .HandPointer,
+                activeTint: activeTint
             ) {
                 toolsManager.selectTool(named: .HandPointer)
             }
 
-            Divider().frame(height: 28)
+            Divider().frame(height: 26).opacity(0.5)
 
             ToolbarButton(iconName: "doc.on.clipboard", help: "Copy", active: false) {
                 copyAction()
@@ -74,12 +83,15 @@ struct MiniToolbarView: View {
                 closeAction()
             }
         }
-        .padding(.horizontal, 12)
-        .frame(height: 58)
+        .padding(.horizontal, 8)
+        .frame(height: 54)
         .background(
-            RoundedRectangle(cornerRadius: 18)
-                .fill(Color(hex: "#1E1E1E"))
-                .opacity(0.95)
+            RoundedRectangle(cornerRadius: 14)
+                .fill(Color(hex: "#3A3A3C"))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14)
+                        .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                )
         )
     }
 }
