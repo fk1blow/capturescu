@@ -121,6 +121,9 @@ protocol Marker {
     var id: UUID { get set }
     var style: MarkerStyle { get }
     var isHighlighted: Bool { get set }
+    /// Transient hover feedback (Select tool only). Distinct from `isHighlighted`,
+    /// which marks the actually-selected marker.
+    var isHovered: Bool { get set }
     func draw(onto graphicsContext: GraphicsContext)
     func changeStyle(with style: MarkerStyle)
     func getRepresentation() -> MarkerRepresentation
@@ -157,11 +160,46 @@ extension Marker {
         }
     }
 
+    /// A subtler outline shown while hovering a marker with the Select tool.
+    /// Thinner and semi-transparent so it reads as "hover", not "selected", and
+    /// suppressed on the already-selected marker to avoid a double outline.
+    func drawHoverHighlight(onto graphicsContext: GraphicsContext) {
+        guard isHovered, !isHighlighted else { return }
+
+        let representation = self.getRepresentation()
+        let cornerRadius: CGFloat = 8
+
+        let rect: CGRect
+        switch representation {
+        case .path(let path):
+            rect = path.boundingRect.insetBy(dx: -10, dy: -10)
+        case .text(let textRep):
+            rect = textRep.frame.insetBy(dx: -10, dy: -10)
+        default:
+            return
+        }
+
+        let newPath = RoundedRectangle(cornerRadius: cornerRadius).path(in: rect)
+        graphicsContext.stroke(
+            newPath,
+            with: .color(self.style.strokeColor.color.opacity(0.4)),
+            lineWidth: 1
+        )
+    }
+
     mutating func showHighlight() {
         isHighlighted = true
     }
 
     mutating func hideHighlight() {
         isHighlighted = false
+    }
+
+    mutating func showHover() {
+        isHovered = true
+    }
+
+    mutating func hideHover() {
+        isHovered = false
     }
 }

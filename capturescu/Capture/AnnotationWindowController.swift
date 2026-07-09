@@ -23,7 +23,6 @@ final class AnnotationWindowController {
     /// to `.copied` before teardown, so every close path reports the right outcome.
     private var outcome: CaptureOutcome = .dismissed
     private var keyMonitor: Any?
-    private var flagsMonitor: Any?
     private var clickOutsideMonitor: Any?
     private var resignActiveObserver: Any?
 
@@ -104,7 +103,6 @@ final class AnnotationWindowController {
         presentAnnotationWindow(at: model.windowFrame)
         presentToolbar(for: model.snapshotFrame, overlaps: toolbarOverlaps())
         installKeyMonitor()
-        installFlagsMonitor()
         installClickOutsideMonitor()
         installResignActiveObserver()
 
@@ -208,10 +206,24 @@ final class AnnotationWindowController {
         keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self else { return event }
 
-            // Esc dismisses the editor — unless a text field is capturing it.
+            // Esc first backs out of a selection (Select tool); only when nothing
+            // is selected does it dismiss the editor. Text fields keep Esc.
             if event.keyCode == 53 { // Escape
                 if NSApp.keyWindow?.firstResponder is NSText { return event }
+                if self.markersManager.selectedMarkerIndex != nil {
+                    self.eventManager.handleKeyboardEvent(.escape)
+                    return nil
+                }
                 self.close()
+                return nil
+            }
+
+            // Delete / Backspace (51) and forward-delete (117) remove the selected
+            // marker. Routed at the window level so it works without the canvas
+            // holding keyboard focus. Text fields keep the key to edit their text.
+            if event.keyCode == 51 || event.keyCode == 117 {
+                if NSApp.keyWindow?.firstResponder is NSText { return event }
+                self.eventManager.handleKeyboardEvent(.delete)
                 return nil
             }
 
@@ -273,39 +285,6 @@ final class AnnotationWindowController {
     }
 
     // MARK: - Hold ⌘ to pan
-
-    /// Holding Command spring-loads the Hand (pan) tool — same as clicking the
-    /// Hand button — and releasing it restores the previous tool. Flipping
-    /// `toolsManager.currentTool` is all that's needed: DrawingSurfaceView's
-    /// pan mode and cursor already react to it. We don't swallow the event, so
-    /// ⌘C / ⌘Z combos keep working.
-    private func installFlagsMonitor() {
-        guard flagsMonitor == nil else { return }
-        flagsMonitor = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
-            guard let self else { return event }
-
-            let cmdDown = event.modifierFlags
-                .intersection(.deviceIndependentFlagsMask)
-                .contains(.command)
-
-            if cmdDown {
-                // Don't hijack ⌘ while typing in the text tool.
-                if NSApp.keyWindow?.firstResponder is NSText { return event }
-                self.toolsManager.beginTemporaryTool(.HandPointer)
-            } else {
-                self.toolsManager.endTemporaryTool()
-            }
-
-            return event
-        }
-    }
-
-    private func removeFlagsMonitor() {
-        if let flagsMonitor {
-            NSEvent.removeMonitor(flagsMonitor)
-        }
-        flagsMonitor = nil
-    }
 
     // MARK: - Windows
 
@@ -434,10 +413,7 @@ final class AnnotationWindowController {
     }
 
     func close() {
-        // Never leave a spring-loaded hold engaged past teardown.
-        toolsManager.endTemporaryTool()
         removeKeyMonitor()
-        removeFlagsMonitor()
         removeClickOutsideMonitor()
         removeResignActiveObserver()
         toolbarPanel?.orderOut(nil)

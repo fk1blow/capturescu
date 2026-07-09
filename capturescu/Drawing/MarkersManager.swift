@@ -167,15 +167,28 @@ class MarkersManager: ObservableObject {
     
     func hoverMarker(at point: CGPoint) {
         let index = findMarkerIndex(at: point)
+
+        // Clear the previously hovered marker's flag if hover moved to another
+        // marker (or off all markers).
+        if let previous = hoveredMarkerIndex, previous != index, previous < markers.count {
+            markers[previous].hideHover()
+        }
+
         hoveredMarkerIndex = index
+        if let index = index, index < markers.count {
+            markers[index].showHover()
+        }
     }
-    
+
     func clearSelection() {
         selectedMarkerIndex = nil
         clearAllHighlights()
     }
-    
+
     func clearHover() {
+        if let previous = hoveredMarkerIndex, previous < markers.count {
+            markers[previous].hideHover()
+        }
         hoveredMarkerIndex = nil
     }
     

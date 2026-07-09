@@ -37,14 +37,9 @@ class ToolsManager: ObservableObject {
         }
     }
 
-    private var toolBeforeTemporaryHold: PointerToolName?
-
-    /// The tool whose contextual size the toolbar should reflect. During a
-    /// temporary hold (⌘-pan) `currentTool` is Hand, but we keep showing the size
-    /// of the creation tool being held so the picker doesn't blink out of the
-    /// toolbar every time the user grabs ⌘ to reposition a marker.
+    /// The tool whose contextual size the toolbar should reflect.
     var sizingTool: PointerToolName {
-        toolBeforeTemporaryHold ?? currentTool
+        currentTool
     }
 
     /// The last creation tool the user picked, remembered across captures and app
@@ -63,27 +58,12 @@ class ToolsManager: ObservableObject {
 
     func selectTool(named toolName: PointerToolName) {
         currentTool = toolName
-        // Single choke point for every tool change (UI, EventManager, ⌘-hold),
-        // so remembering happens here. Only creation tools are stored — the
-        // ⌘-hold's switch to Hand and any Selection are filtered out.
+        // Single choke point for every tool change (UI, EventManager), so
+        // remembering happens here. Only creation tools are stored — Selection
+        // is filtered out.
         if toolName.isPersistableDefault {
             ToolsManager.lastCreationTool = toolName
         }
-    }
-
-    /// Temporarily switch to `tool`, remembering the current one so it can be
-    /// restored. No-op if a hold is already active or we're already on `tool`.
-    func beginTemporaryTool(_ tool: PointerToolName) {
-        guard toolBeforeTemporaryHold == nil, currentTool != tool else { return }
-        toolBeforeTemporaryHold = currentTool
-        selectTool(named: tool)
-    }
-
-    /// Revert a temporary hold started by `beginTemporaryTool`, if any.
-    func endTemporaryTool() {
-        guard let previous = toolBeforeTemporaryHold else { return }
-        toolBeforeTemporaryHold = nil
-        selectTool(named: previous)
     }
 
     func changeToolColor(with color: MarkerColor) {

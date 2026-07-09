@@ -140,6 +140,12 @@ class EventManager: ObservableObject {
       currentTool = handTool
     }
 
+    // Reset the shared cursor so a tool that reads `currentCursor` (Selection)
+    // starts from a clean default instead of inheriting the previous tool's
+    // cursor (e.g. the hand left behind by Move-snapshot). Tools with an explicit
+    // cursor in `activeCursor` ignore this value.
+    currentCursor = .default
+
     // Update tools manager to keep UI in sync
     updateToolsManager(for: toolRequest)
   }
