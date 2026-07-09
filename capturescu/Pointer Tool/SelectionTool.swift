@@ -49,7 +49,10 @@ import SwiftUI
             
         case .keyPressed(.delete):
             return handleDeleteKey()
-            
+
+        case .keyPressed(.escape):
+            return handleEscape()
+
         default:
             return .empty
         }
@@ -146,10 +149,14 @@ import SwiftUI
             selectedMarkerID = editableMarker.marker.id
             isDragging = true
             dragStartPoint = point
-            
+
             // Update highlighting through MarkersManager
             markersManager?.selectMarker(at: point)
-            
+
+            // Begin a consolidated drag so the whole move becomes ONE undo step
+            // instead of one per drag tick.
+            markersManager?.startDragOperation()
+
             return ToolResponse(
                 shouldContinue: true,
                 cursorUpdate: .move
@@ -157,43 +164,41 @@ import SwiftUI
         }
         return .empty
     }
-    
+
     private func handleDragUpdate(at point: CGPoint) -> ToolResponse {
-        guard isDragging, let markerID = selectedMarkerID, let markersManager = markersManager else { return .empty }
-        
-        // Calculate movement delta
+        guard isDragging, let markersManager = markersManager else { return .empty }
+
+        // Calculate movement delta since the last update
         let deltaX = point.x - dragStartPoint.x
         let deltaY = point.y - dragStartPoint.y
-        
+
         // Update drag start point for next update
         dragStartPoint = point
-        
-        // Create move command for this update
-        let moveCommand = MoveMarkerCommand(
-            markersManager: markersManager,
-            markerID: markerID,
-            deltaX: deltaX,
-            deltaY: deltaY
-        )
-        
+
+        // Move in place without emitting a command — the consolidated command is
+        // recorded once in handleDragEnd via endDragOperation().
+        markersManager.moveSelectedMarkerDirect(deltaX: deltaX, deltaY: deltaY)
+
         return ToolResponse(
             shouldContinue: true,
-            commands: [moveCommand],
             cursorUpdate: .move
         )
     }
-    
+
     private func handleDragEnd(at point: CGPoint) -> ToolResponse {
         guard isDragging else { return .empty }
-        
+
         // Reset drag state
         isDragging = false
         dragStartPoint = .zero
-        
+
+        // Record the entire drag as a single undoable MoveMarkerCommand.
+        markersManager?.endDragOperation()
+
         // Keep the marker selected after drag
         return ToolResponse(
             shouldContinue: true,
-            cursorUpdate: .pointer
+            cursorUpdate: .move
         )
     }
     
@@ -236,5 +241,29 @@ import SwiftUI
             cursorUpdate: .default,
             clearSelection: true
         )
+    }
+
+    private func handleEscape() -> ToolResponse {
+        // Nothing selected: let the caller (window monitor) fall through to its
+        // default Escape behavior (dismissing the editor).
+        guard selectedMarkerIndex != nil || selectedMarkerID != nil else {
+            return .empty
+        }
+
+        selectedMarkerIndex = nil
+        selectedMarkerID = nil
+        markersManager?.clearSelection()
+
+        return ToolResponse(
+            shouldContinue: true,
+            cursorUpdate: .default,
+            clearSelection: true
+        )
+    }
+
+    /// Whether a marker is currently selected — used by the window key monitor to
+    /// decide if Escape should deselect (true) or dismiss the editor (false).
+    var hasSelection: Bool {
+        selectedMarkerIndex != nil || selectedMarkerID != nil
     }
 }

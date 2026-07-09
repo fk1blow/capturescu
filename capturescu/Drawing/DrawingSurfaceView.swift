@@ -47,13 +47,28 @@ struct DrawingSurfaceView: View {
   /// While the hand tool is active, hovering shows an open hand; otherwise the
   /// active tool's own cursor is used.
   private var activeCursor: CursorType {
+    // Space-pan or the Move-snapshot tool → open hand, regardless of which
+    // drawing tool is underneath.
+    if isPanMode { return .move }
+
     switch toolsManager.currentTool {
     case .HandPointer: return .move
     case .TextPointer: return .text
     case .LinePointer: return .crosshair
+    case .ArrowPointer: return .default
     case .FreehandPointer: return .dot
+    // Selection drives its own cursor via event responses (click sets
+    // .move/.default), so it reads the live EventManager value.
     default: return eventManager.currentCursor
     }
+  }
+
+  /// Apply the cursor for the current tool / pan state immediately, without
+  /// waiting for a hover transition. The `.cursor` hover modifier only fires on
+  /// hover enter/exit, so call this after any state change it won't catch on its
+  /// own: a tool switch, a space-pan toggle, or the end of a pan drag.
+  private func applyActiveCursor() {
+    activeCursor.nsCursor.set()
   }
 
   var body: some View {
@@ -113,6 +128,11 @@ struct DrawingSurfaceView: View {
     }
     .onChange(of: toolsManager.pointerTool.toolName) { newTool in
       eventManager.handleToolChange(to: newTool)
+      // Re-apply the cursor immediately after switching so it can't stay stale
+      // when the pointer is already inside the canvas and no hover event fires.
+      // handleToolChange runs synchronously above, so activeCursor now reflects
+      // the tool we just switched to.
+      applyActiveCursor()
     }
     .onChange(of: toolsManager.selectedColor) { newColor in
       eventManager.updateToolColor(newColor)
@@ -150,10 +170,10 @@ struct DrawingSurfaceView: View {
 
       if event.type == .keyDown && !event.isARepeat {
         isSpacePressed = true
-        NSCursor.openHand.set()
+        applyActiveCursor() // pan mode → open hand
       } else if event.type == .keyUp {
         isSpacePressed = false
-        NSCursor.arrow.set() // Reset to default cursor
+        applyActiveCursor() // restore the active tool's cursor (not a hardcoded arrow)
       }
       
       // Return nil to consume the event and prevent the tic sound
@@ -255,9 +275,9 @@ struct DrawingSurfaceView: View {
 
     // If this was a pan gesture, don't send events to tools.
     if isPanMode {
-      if toolsManager.currentTool == .HandPointer {
-        NSCursor.openHand.set() // release back to the open hand
-      }
+      // Restore the resting cursor: still-open hand if we're staying in pan mode
+      // (Move-snapshot tool or space held), or the underlying tool's cursor.
+      applyActiveCursor()
       return
     }
 
@@ -289,6 +309,14 @@ struct DrawingSurfaceView: View {
   }
 
   private func handleHover(_ phase: HoverPhase) {
+    // Hover feedback (cursor + subtle outline) only makes sense for the Select
+    // tool; while drawing with any other tool it would be noise.
+    guard toolsManager.currentTool == .SelectionPointer else {
+      // Ensure no stale hover outline lingers after switching away from Select.
+      if markersManager.isHovering { markersManager.clearHover() }
+      return
+    }
+
     switch phase {
     case let .active(location):
       // Convert screen coordinates to canvas coordinates
@@ -298,36 +326,34 @@ struct DrawingSurfaceView: View {
       )
       // Update markers manager hover state
       markersManager.hoverMarker(at: canvasLocation)
-    // eventManager.handleEvent(.hover(canvasLocation)) // Commented out for debugging
     case .ended:
       markersManager.clearHover()
-      // eventManager.handleEvent(.hoverEnd) // Commented out for debugging
     }
   }
 }
 
 // MARK: - Cursor Extension
 
+extension CursorType {
+  /// The concrete AppKit cursor for this semantic cursor type.
+  var nsCursor: NSCursor {
+    switch self {
+    case .default: return .arrow
+    case .pointer: return .pointingHand
+    case .text: return .iBeam
+    case .crosshair: return .crosshair
+    case .move: return .openHand
+    case .resize: return .resizeLeftRight
+    case .dot: return CustomCursor.dot
+    }
+  }
+}
+
 extension View {
   func cursor(_ cursorType: CursorType) -> some View {
     onHover { isHovering in
       if isHovering {
-        switch cursorType {
-        case .default:
-          NSCursor.arrow.set()
-        case .pointer:
-          NSCursor.pointingHand.set()
-        case .text:
-          NSCursor.iBeam.set()
-        case .crosshair:
-          NSCursor.crosshair.set()
-        case .move:
-          NSCursor.openHand.set()
-        case .resize:
-          NSCursor.resizeLeftRight.set()
-        case .dot:
-          CustomCursor.dot.set()
-        }
+        cursorType.nsCursor.set()
       } else {
         NSCursor.arrow.set()
       }

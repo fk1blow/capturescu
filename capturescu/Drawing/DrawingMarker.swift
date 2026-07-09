@@ -15,6 +15,7 @@ struct DrawingMarker: Marker {
     var style: MarkerStyle
     var path: Path
     var isHighlighted: Bool = false
+    var isHovered: Bool = false
 
     init(markerColor: MarkerColor) {
         style = MarkerStyle(strokeColor: markerColor)
@@ -48,6 +49,7 @@ struct DrawingMarker: Marker {
         }
 
         drawHighlight(onto: graphicsContext)
+        drawHoverHighlight(onto: graphicsContext)
     }
 
     /// Paint the marker's fill and/or outline. A zero stroke width means "no

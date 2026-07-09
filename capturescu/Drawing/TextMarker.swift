@@ -104,6 +104,7 @@ struct TextMarker: Marker {
 
     var style: MarkerStyle
     var isHighlighted: Bool = false
+    var isHovered: Bool = false
 
     var textValueRepresentation: String = ""
     var frameRepresentation: CGRect = .zero
@@ -145,6 +146,7 @@ struct TextMarker: Marker {
         ctx.draw(resolvedText, at: frameRepresentation.origin, anchor: .topLeading)
 
         drawHighlight(onto: ctx)
+        drawHoverHighlight(onto: ctx)
     }
 
     func changeStyle(with _: MarkerStyle) {

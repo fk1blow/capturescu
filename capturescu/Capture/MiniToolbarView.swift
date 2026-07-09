@@ -65,22 +65,18 @@ struct MiniToolbarView: View {
             }
 
             ToolbarButton(
-                iconName: "hand.draw",
-                help: "Move (hold ⌘)",
-                active: toolsManager.currentTool == .HandPointer,
+                iconName: "cursorarrow",
+                help: "Select",
+                active: toolsManager.currentTool == .SelectionPointer,
                 activeTint: activeTint
             ) {
-                toolsManager.selectTool(named: .HandPointer)
+                toolsManager.selectTool(named: .SelectionPointer)
             }
 
-            // Contextual size control: stroke width for the drawing tools, font
-            // size for the text tool. Hidden for Hand / Selection where it has no
-            // meaning — but kept visible during a ⌘-hold pan (sizingTool reflects
-            // the creation tool being held, not the transient Hand).
-            if toolsManager.sizingTool.usesSize {
-                Divider().frame(height: 26).opacity(0.5)
-                ToolSizeControl()
-            }
+            // Contextual size control: font size for the text tool, stroke width
+            // for every other tool. Always visible — never hidden per tool.
+            Divider().frame(height: 26).opacity(0.5)
+            ToolSizeControl()
 
             Divider().frame(height: 26).opacity(0.5)
 
