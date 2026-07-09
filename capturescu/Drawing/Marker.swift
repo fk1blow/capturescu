@@ -72,10 +72,21 @@ enum MarkerColor: String, CaseIterable {
     }
 }
 
+/// A soft drop shadow used to separate a marker from any background — light or
+/// dark, plain or busy. Rendered identically on the live canvas and in the
+/// exported PNG.
+struct MarkerShadow {
+    var color: Color = .black.opacity(0.22)
+    var radius: CGFloat = 3
+    var offset: CGSize = CGSize(width: 0, height: 1)
+}
+
 struct MarkerStyle {
     var strokeColor: MarkerColor
     var fillColor: MarkerColor?
     var strokeWidth: CGFloat
+    /// Optional drop shadow (nil = none), used by filled shapes like the arrow.
+    var shadow: MarkerShadow?
 
     init(strokeColor: MarkerColor) {
         self.strokeColor = strokeColor
@@ -96,6 +107,7 @@ struct DrawingMarkerRepresentation {
 struct TextMarkerRepresentation {
     let frame: CGRect
     let text: String
+    var fontSize: CGFloat = TextMarkerFont.defaultSize
 }
 
 enum MarkerRepresentation {

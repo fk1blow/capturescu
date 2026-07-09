@@ -61,6 +61,11 @@ class EventManager: ObservableObject {
 
     // Set up event handlers for tools that need to send events back
     setupEventHandlers()
+
+    // Seed tools with the current size settings so the first stroke/text uses
+    // whatever the toolbar shows, not the tool's built-in default.
+    updateToolStrokeWidth(toolsManager.selectedStrokeWidth)
+    updateToolFontSize(toolsManager.selectedTextSize)
   }
 
   /// Main event handling method
@@ -190,6 +195,18 @@ class EventManager: ObservableObject {
     freehandTool.updateColor(color)
     lineTool.updateColor(color)
     arrowTool.updateColor(color)
+  }
+
+  /// Update stroke width for the stroke-based tools when changed in the UI.
+  func updateToolStrokeWidth(_ width: CGFloat) {
+    freehandTool.updateStrokeWidth(width)
+    lineTool.updateStrokeWidth(width)
+    arrowTool.updateStrokeWidth(width)
+  }
+
+  /// Update the font size used for newly created text markers.
+  func updateToolFontSize(_ size: CGFloat) {
+    textTool.updateFontSize(size)
   }
 
   /// Render current tool preview

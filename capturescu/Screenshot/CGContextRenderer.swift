@@ -112,23 +112,49 @@ struct CGContextRenderer {
 
         context.saveGState()
 
-        // Set stroke properties
-        let strokeColor = cgColor(from: style.strokeColor)
-        context.setStrokeColor(strokeColor)
-        context.setLineWidth(style.strokeWidth)
         context.setLineCap(.round)
         context.setLineJoin(.round)
 
-        context.addPath(cgPath)
-
-        // Fill if needed, then stroke
-        if let fillColor = style.fillColor {
-            let fillCGColor = cgColor(from: fillColor)
-            context.setFillColor(fillCGColor)
-            context.drawPath(using: .fillStroke)
-        } else {
-            context.strokePath()
+        // Paint the marker's fill and/or outline. Called twice for a shadowed
+        // marker: once under an active shadow, once clean on top — see below.
+        func drawBody() {
+            context.addPath(cgPath)
+            if let fillColor = style.fillColor {
+                let fillCGColor = cgColor(from: fillColor)
+                context.setFillColor(fillCGColor)
+                if style.strokeWidth > 0 {
+                    // Filled + outlined.
+                    context.setStrokeColor(cgColor(from: style.strokeColor))
+                    context.setLineWidth(style.strokeWidth)
+                    context.drawPath(using: .fillStroke)
+                } else {
+                    // Filled silhouette (arrow): rounding is baked into the path.
+                    context.drawPath(using: .fill)
+                }
+            } else {
+                // Plain stroked marker (freehand / line).
+                context.setStrokeColor(cgColor(from: style.strokeColor))
+                context.setLineWidth(style.strokeWidth)
+                context.strokePath()
+            }
         }
+
+        // Shadow pass, then a clean body pass on top. Mirrors the on-screen
+        // renderer: painting the body once under a shadow lets its rounding stroke
+        // cast a shadow onto its own fill (a lighter seam); the clean top pass
+        // covers that and leaves only the outer shadow. The export context is
+        // y-flipped, so negate the shadow offset's y to match the on-screen fall.
+        if let shadow = style.shadow {
+            context.saveGState()
+            context.setShadow(
+                offset: CGSize(width: shadow.offset.width, height: -shadow.offset.height),
+                blur: shadow.radius,
+                color: NSColor(shadow.color).cgColor
+            )
+            drawBody()
+            context.restoreGState()
+        }
+        drawBody()
 
         context.restoreGState()
     }
@@ -146,7 +172,7 @@ struct CGContextRenderer {
         let paragraph = NSMutableParagraphStyle()
         paragraph.alignment = .left
         let attributes: [NSAttributedString.Key: Any] = [
-            .font: TextMarkerFont.nsFont,
+            .font: TextMarkerFont.nsFont(size: textRep.fontSize),
             .foregroundColor: NSColor(cgColor: color) ?? .white,
             .paragraphStyle: paragraph
         ]

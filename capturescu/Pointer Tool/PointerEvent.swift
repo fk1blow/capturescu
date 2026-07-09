@@ -57,6 +57,7 @@ enum CursorType {
     case crosshair
     case move
     case resize
+    case dot
 }
 
 /// Tool switching requests

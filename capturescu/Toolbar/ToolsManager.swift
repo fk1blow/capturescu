@@ -12,8 +12,11 @@ class ToolsManager: ObservableObject {
     @Published var selectedColor: MarkerColor = .red
     @Published var currentTool: PointerToolName = ToolsManager.lastCreationTool
 
-    var selectedTextSize: Float = 12.0
-    var selectedStrokeWidth: Float = 1
+    /// Stroke width for freehand / line / arrow, and font size for text. Both are
+    /// @Published so the toolbar's size control and the canvas react live. Defaults
+    /// match the historical hard-coded values (2pt stroke, 14pt text).
+    @Published var selectedTextSize: CGFloat = 14
+    @Published var selectedStrokeWidth: CGFloat = 2
 
     private var toolBeforeTemporaryHold: PointerToolName?
 
