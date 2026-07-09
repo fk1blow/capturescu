@@ -214,8 +214,10 @@ import AppKit
                     at: target.index
                 )
             }
-            // Otherwise update in place, preserving identity and color.
-            var updated = TextMarker(markerColor: oldMarker.style.strokeColor, textValue: text, origin: session.origin)
+            // Otherwise update in place, preserving identity and color. Bake the
+            // editor's soft-wrapping into explicit line breaks so the marker
+            // renders exactly as it looked while typing.
+            var updated = TextMarker(markerColor: oldMarker.style.strokeColor, textValue: TextMarkerFont.hardWrapped(text), origin: session.origin)
             updated.id = oldMarker.id
             return UpdateMarkerCommand(
                 markersManager: markersManager,
@@ -224,9 +226,11 @@ import AppKit
                 at: target.index
             )
         } else {
-            // New marker: nothing to add if no text was typed.
+            // New marker: nothing to add if no text was typed. Bake the editor's
+            // soft-wrapping into explicit line breaks so the marker renders
+            // exactly as it looked while typing.
             guard !text.isEmpty else { return nil }
-            let newMarker = TextMarker(markerColor: session.color, textValue: text, origin: session.origin)
+            let newMarker = TextMarker(markerColor: session.color, textValue: TextMarkerFont.hardWrapped(text), origin: session.origin)
             return AddMarkerCommand(markersManager: markersManager, marker: newMarker)
         }
     }
