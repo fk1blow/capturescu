@@ -50,6 +50,8 @@ struct DrawingSurfaceView: View {
     switch toolsManager.currentTool {
     case .HandPointer: return .move
     case .TextPointer: return .text
+    case .LinePointer: return .crosshair
+    case .FreehandPointer: return .dot
     default: return eventManager.currentCursor
     }
   }
@@ -114,6 +116,12 @@ struct DrawingSurfaceView: View {
     }
     .onChange(of: toolsManager.selectedColor) { newColor in
       eventManager.updateToolColor(newColor)
+    }
+    .onChange(of: toolsManager.selectedStrokeWidth) { newWidth in
+      eventManager.updateToolStrokeWidth(newWidth)
+    }
+    .onChange(of: toolsManager.selectedTextSize) { newSize in
+      eventManager.updateToolFontSize(newSize)
     }
     .onKeyPress(.delete) {
       eventManager.handleKeyboardEvent(.delete)
@@ -317,10 +325,39 @@ extension View {
           NSCursor.openHand.set()
         case .resize:
           NSCursor.resizeLeftRight.set()
+        case .dot:
+          CustomCursor.dot.set()
         }
       } else {
         NSCursor.arrow.set()
       }
     }
   }
+}
+
+// MARK: - Custom Cursors
+
+enum CustomCursor {
+  /// A small filled dot for the freehand tool — a "pen tip" that marks exactly
+  /// where the stroke will land. A white ring keeps it visible on any background.
+  static let dot: NSCursor = {
+    let diameter: CGFloat = 9
+    let padding: CGFloat = 2 // room for the ring so it isn't clipped
+    let size = NSSize(width: diameter + padding * 2, height: diameter + padding * 2)
+
+    let image = NSImage(size: size, flipped: false) { _ in
+      let rect = NSRect(x: padding, y: padding, width: diameter, height: diameter)
+      // White ring for contrast on dark backgrounds…
+      let ring = NSBezierPath(ovalIn: rect)
+      ring.lineWidth = 2
+      NSColor.white.setStroke()
+      ring.stroke()
+      // …and a dark fill for contrast on light ones.
+      NSColor.black.setFill()
+      NSBezierPath(ovalIn: rect.insetBy(dx: 1, dy: 1)).fill()
+      return true
+    }
+    // Hotspot at the center of the dot so it draws exactly under the point.
+    return NSCursor(image: image, hotSpot: NSPoint(x: size.width / 2, y: size.height / 2))
+  }()
 }

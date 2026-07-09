@@ -13,6 +13,7 @@ import SwiftUI
     let needsAccessoryView = false
     
     private var markerColor: MarkerColor
+    var strokeWidth: CGFloat = 2
     var currentMarker: DrawingMarker?
     private var isDrawing = false
     private weak var markersManager: MarkersManager?
@@ -67,11 +68,15 @@ import SwiftUI
     func updateColor(_ color: MarkerColor) {
         markerColor = color
     }
-    
+
+    func updateStrokeWidth(_ width: CGFloat) {
+        strokeWidth = width
+    }
+
     func updateMarkersManager(_ markersManager: MarkersManager) {
         self.markersManager = markersManager
     }
-    
+
     func setStateChangeHandler(_ handler: @escaping () -> Void) {
         onStateChange = handler
     }
@@ -80,6 +85,7 @@ import SwiftUI
     
     private func beginDrawing(at point: CGPoint) {
         var marker = DrawingMarker(markerColor: markerColor)
+        marker.style.strokeWidth = strokeWidth
         marker.path.move(to: point)
         currentMarker = marker
         isDrawing = true
