@@ -13,24 +13,25 @@ struct ToolbarView: View {
     VStack {
       Spacer()
 
-      HStack {
+      HStack(spacing: 8) {
         ToolPickerView()
-        Divider().frame(width: 2, height: 32).padding(.horizontal, 20).opacity(0.6)
-        HStack(spacing: 12) {
+        Divider().frame(width: 1.5, height: 26).padding(.horizontal, 8).opacity(0.5)
+        HStack(spacing: 8) {
           ColorPickerButton()
           SizePickerButton()
         }
       }
+      .padding(6)
       .background(
-        RoundedRectangle(cornerRadius: 32)
-          .fill(Color(hex: "#1E1E1E"))
-          .opacity(0.8)
-          .frame(width: 477, height: 58)
-          //  b/c of the fucking ring
-          .offset(x: 6, y: 0)
+        RoundedRectangle(cornerRadius: 14)
+          .fill(Color(hex: "#3A3A3C"))
+          .overlay(
+            RoundedRectangle(cornerRadius: 14)
+              .stroke(Color.white.opacity(0.1), lineWidth: 1)
+          )
       )
     }
-    .frame(maxWidth: 200, maxHeight: .infinity, alignment: .bottom)
+    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
     .offset(x: 0, y: -24)
   }
 }

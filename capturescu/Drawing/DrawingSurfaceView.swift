@@ -47,7 +47,11 @@ struct DrawingSurfaceView: View {
   /// While the hand tool is active, hovering shows an open hand; otherwise the
   /// active tool's own cursor is used.
   private var activeCursor: CursorType {
-    toolsManager.currentTool == .HandPointer ? .move : eventManager.currentCursor
+    switch toolsManager.currentTool {
+    case .HandPointer: return .move
+    case .TextPointer: return .text
+    default: return eventManager.currentCursor
+    }
   }
 
   var body: some View {

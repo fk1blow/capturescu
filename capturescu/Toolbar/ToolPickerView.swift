@@ -11,43 +11,52 @@ import SwiftUI
 struct ToolPickerView: View {
     @EnvironmentObject var selectionManager: ToolsManager
 
+    private var activeTint: Color {
+        selectionManager.selectedColor.color
+    }
+
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 4) {
             // dummy button to lose the fucking focus ring that's sticking to the first button
             Button(action: {}, label: {}).frame(width: 0, height: 0).background(.clear).opacity(0)
             ToolbarButton(
-                iconName: "pencil",
-                fontWeight: .medium,
+                iconName: "pencil.and.scribble",
+                fontWeight: .semibold,
                 help: "Freehand",
                 active: selectionManager.pointerTool.toolName == PointerToolName.FreehandPointer,
+                activeTint: activeTint,
                 action: { selectionManager.selectTool(named: .FreehandPointer) }
             )
             ToolbarButton(
-                iconName: "pencil.line",
-                fontWeight: .medium,
+                iconName: "line.diagonal",
+                fontWeight: .semibold,
                 help: "Line",
                 active: selectionManager.pointerTool.toolName == PointerToolName.LinePointer,
+                activeTint: activeTint,
                 action: { selectionManager.selectTool(named: .LinePointer) }
             )
             ToolbarButton(
                 iconName: "arrow.down.left",
-                fontWeight: .medium,
+                fontWeight: .semibold,
                 help: "Arrow",
                 active: selectionManager.pointerTool.toolName == PointerToolName.ArrowPointer,
+                activeTint: activeTint,
                 action: { selectionManager.selectTool(named: .ArrowPointer) }
             )
             ToolbarButton(
                 iconName: "character",
-                fontWeight: .medium,
+                fontWeight: .semibold,
                 help: "Text",
                 active: selectionManager.pointerTool.toolName == PointerToolName.TextPointer,
+                activeTint: activeTint,
                 action: { selectionManager.selectTool(named: .TextPointer) }
             )
             ToolbarButton(
                 iconName: "arrow.up.left.and.arrow.down.right",
-                fontWeight: .medium,
+                fontWeight: .semibold,
                 help: "Select",
                 active: selectionManager.pointerTool.toolName == PointerToolName.SelectionPointer,
+                activeTint: activeTint,
                 action: { selectionManager.selectTool(named: .SelectionPointer) }
             )
         }

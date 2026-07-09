@@ -29,7 +29,7 @@ struct ColorPickerButton: View {
                     .cornerRadius(32)
             }
             .frame(width: 74, height: 38)
-            .background(RoundedRectangle(cornerRadius: 32).fill(getBackgroundColor()))
+            .background(RoundedRectangle(cornerRadius: 8).fill(getBackgroundColor()))
         })
         .onHover { hovering in
             isHovering = hovering
@@ -47,9 +47,10 @@ struct ColorPickerButton: View {
 
     private func getBackgroundColor() -> Color {
         if isHovering || isShowingPopover {
-            return Color(Color(hex: "#494949"))
+            return Color.white.opacity(0.08)
         }
-        return Color(Color(hex: "#333333"))
+        // Flush on the bar surface — no gray chip.
+        return Color.clear
     }
 
     private func getSelectedColor() -> MarkerColor {
